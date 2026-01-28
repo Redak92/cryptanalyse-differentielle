@@ -1,0 +1,3 @@
+Optimisations implemented:
+1. Distinguished Points - O(2^n/2) collision finding
+2. Parallel Search with thread-safe structures
