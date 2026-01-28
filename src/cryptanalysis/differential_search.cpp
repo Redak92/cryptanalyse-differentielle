@@ -6,7 +6,19 @@
 #include <cstring>
 
 DifferentialSearch::DifferentialSearch(ToyCipher& cipher, uint64_t maxSamples)
-    : cipher(cipher), maxSamples(maxSamples) {}
+    : cipher(cipher), maxSamples(maxSamples) {
+    
+    // Initialiser les optimisations
+    ParallelSearch::Config psConfig;
+    psConfig.numThreads = std::thread::hardware_concurrency();
+    psConfig.samplesPerThread = maxSamples / psConfig.numThreads;
+    parallelSearch = std::make_unique<ParallelSearch>(cipher, psConfig);
+    
+    DistinguishedPoints::Config dpConfig;
+    dpConfig.numThreads = std::thread::hardware_concurrency();
+    dpConfig.maxMarches = maxSamples;
+    distinguishedPoints = std::make_unique<DistinguishedPoints>(cipher, dpConfig);
+}
 
 Block DifferentialSearch::computeDerivative(Block x, Difference deltaIn) {
     
@@ -122,3 +134,35 @@ void DifferentialSearch::printStatistics() const {
                   << probability << "\n";
     }
 }
+
+DifferentialCount DifferentialSearch::searchDifferentialsParallel(
+    Difference deltaIn,
+    uint32_t numThreads) {
+    
+    if (!parallelSearch) {
+        std::cerr << "Erreur : ParallelSearch non initialisé\n";
+        return globalDifferentials;
+    }
+
+    ParallelSearch::Config config;
+    config.numThreads = numThreads;
+    config.samplesPerThread = maxSamples / numThreads;
+    config.targetDeltaIn = deltaIn;
+
+    ParallelSearch ps(cipher, config);
+    return ps.searchDifferentialsParallel(deltaIn);
+}
+
+std::vector<DistinguishedPoints::CollisionResult> 
+DifferentialSearch::findCollisionsWithDistinguishedPoints(
+    const DistinguishedPoints::Config& config) {
+    
+    if (!distinguishedPoints) {
+        std::cerr << "Erreur : DistinguishedPoints non initialisé\n";
+        return {};
+    }
+
+    DistinguishedPoints dp(cipher, config);
+    return dp.findCollisions();
+}
+

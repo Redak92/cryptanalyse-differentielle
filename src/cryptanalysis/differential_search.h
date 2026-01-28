@@ -3,8 +3,12 @@
 
 #include "../utils/types.h"
 #include "../cipher/toy_cipher.h"
+#include "parallel_search.h"
+#include "distinguished_points.h"
 #include <vector>
 #include <unordered_map>
+#include <memory>
+#include <thread>
 
 
 
@@ -25,11 +29,27 @@ public:
     
     
     void printStatistics() const;
+
+    /**
+     * Optimisations
+     */
+    
+    DifferentialCount searchDifferentialsParallel(
+        Difference deltaIn,
+        uint32_t numThreads = std::thread::hardware_concurrency());
+    
+    
+    std::vector<DistinguishedPoints::CollisionResult> findCollisionsWithDistinguishedPoints(
+        const DistinguishedPoints::Config& config);
     
 private:
     ToyCipher& cipher;
     uint64_t maxSamples;
     DifferentialCount globalDifferentials;
+    
+    // Instances d'optimisation
+    std::unique_ptr<ParallelSearch> parallelSearch;
+    std::unique_ptr<DistinguishedPoints> distinguishedPoints;
     
     
     struct CollisionTable {
