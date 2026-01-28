@@ -1,19 +1,26 @@
 #include <iostream>
+#include <io.h>
+#include <fcntl.h>
 #include "cipher/toy_cipher.h"
 #include "cryptanalysis/differential_search.h"
 #include "utils/utils.h"
 #include "utils/types.h"
 
 int main() {
-    std::cout << "=== Recherche de différentielles - Étape 3 ===\n\n";
+    // Disable UTF-8 mode to avoid encoding issues on Windows
+    #ifdef _WIN32
+        _setmode(_fileno(stdout), _O_TEXT);
+    #endif
+    
+    std::cout << "=== Differential Analysis - Stage 3 ===\n\n";
     
     
     Key key = 0x12345678;
     int numRounds = 4;
     ToyCipher cipher(key, numRounds);
     
-    std::cout << "Chiffrement jouet créé :\n";
-    std::cout << "  Clé       : " << Utils::toHex(key) << "\n";
+    std::cout << "Toy Cipher created:\n";
+    std::cout << "  Key       : " << Utils::toHex(key) << "\n";
     std::cout << "  Rounds    : " << numRounds << "\n\n";
     
     
@@ -21,18 +28,18 @@ int main() {
     Block ciphertext = cipher.encrypt(plaintext);
     Block decrypted = cipher.decrypt(ciphertext);
     
-    std::cout << "Test de chiffrement/déchiffrement :\n";
-    std::cout << "  Texte clair     : " << Utils::toHex(plaintext) << "\n";
-    std::cout << "  Texte chiffré   : " << Utils::toHex(ciphertext) << "\n";
-    std::cout << "  Déchiffré       : " << Utils::toHex(decrypted) << "\n";
-    std::cout << "  Vérifié         : " << (plaintext == decrypted ? "OK" : "ERREUR") << "\n\n";
+    std::cout << "Encryption/Decryption Test:\n";
+    std::cout << "  Plaintext       : " << Utils::toHex(plaintext) << "\n";
+    std::cout << "  Ciphertext      : " << Utils::toHex(ciphertext) << "\n";
+    std::cout << "  Decrypted       : " << Utils::toHex(decrypted) << "\n";
+    std::cout << "  Verified        : " << (plaintext == decrypted ? "OK" : "ERROR") << "\n\n";
     
     
     uint64_t numSamples = 100000;  
     DifferentialSearch searcher(cipher, numSamples);
     
-    std::cout << "Recherche de différentielles :\n";
-    std::cout << "  Nombre d'échantillons : " << numSamples << "\n\n";
+    std::cout << "Differential Search:\n";
+    std::cout << "  Sample count : " << numSamples << "\n\n";
     
     
     std::vector<Difference> deltaIns = {
@@ -46,7 +53,7 @@ int main() {
     searcher.analyzeMultipleDifferences(deltaIns);
     
     
-    std::cout << "\n=== Top 10 Différentielles ===\n";
+    std::cout << "\n=== Top 10 Differentials ===\n";
     auto bestDiffs = searcher.findBestDifferentials(10, 0.0001);
     
     for (size_t i = 0; i < bestDiffs.size(); i++) {
@@ -59,7 +66,7 @@ int main() {
     
     searcher.printStatistics();
     
-    std::cout << "\n=== Fin de l'étape 3 ===\n";
+    std::cout << "\n=== End of Stage 3 ===\n";
     
     return 0;
 }

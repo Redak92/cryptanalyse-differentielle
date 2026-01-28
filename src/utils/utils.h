@@ -5,7 +5,15 @@
 #include <string>
 #include <iomanip>
 #include <sstream>
+#include <bitset>
 
+// Support pour MSVC et GCC
+#ifdef _MSC_VER
+    #include <intrin.h>
+    #define POPCOUNT __popcnt
+#else
+    #define POPCOUNT __builtin_popcount
+#endif
 
 
 namespace Utils {
@@ -29,7 +37,7 @@ inline bool getBit(Block value, int i) {
 
 
 inline int popcount(Block value) {
-    return __builtin_popcount(value);
+    return POPCOUNT(value);
 }
 
 

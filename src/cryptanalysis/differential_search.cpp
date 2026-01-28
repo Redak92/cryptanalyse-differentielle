@@ -99,18 +99,18 @@ DifferentialSearch::findBestDifferentials(int topK, float probabilityThreshold) 
 }
 
 void DifferentialSearch::analyzeMultipleDifferences(const std::vector<Difference>& deltaIns) {
-    std::cout << "Analyse de " << deltaIns.size() << " différences d'entrée...\n";
+    std::cout << "Analyzing " << deltaIns.size() << " input differences...\n";
     
     for (size_t i = 0; i < deltaIns.size(); i++) {
-        std::cout << "  Traitement " << (i + 1) << "/" << deltaIns.size() 
+        std::cout << "  Processing " << (i + 1) << "/" << deltaIns.size() 
                   << " (deltaIn = " << Utils::toHex(deltaIns[i]) << ")...\n";
         searchDifferentials(deltaIns[i]);
     }
 }
 
 void DifferentialSearch::printStatistics() const {
-    std::cout << "\n=== Statistiques des différentielles ===\n";
-    std::cout << "Nombre total de différentielles trouvées : " 
+    std::cout << "\n=== Differential Statistics ===\n";
+    std::cout << "Total differentials found : " 
               << globalDifferentials.size() << "\n";
     
     
@@ -126,11 +126,11 @@ void DifferentialSearch::printStatistics() const {
     
     if (maxCount > 0) {
         double probability = static_cast<double>(maxCount) / maxSamples;
-        std::cout << "\nMeilleure différentielle :\n";
-        std::cout << "  Entrée  : " << Utils::toHex(bestDiff.first) << "\n";
-        std::cout << "  Sortie  : " << Utils::toHex(bestDiff.second) << "\n";
-        std::cout << "  Compte  : " << maxCount << " / " << maxSamples << "\n";
-        std::cout << "  Probab. : " << std::fixed << std::setprecision(6) 
+        std::cout << "\nBest Differential:\n";
+        std::cout << "  Input  : " << Utils::toHex(bestDiff.first) << "\n";
+        std::cout << "  Output : " << Utils::toHex(bestDiff.second) << "\n";
+        std::cout << "  Count  : " << maxCount << " / " << maxSamples << "\n";
+        std::cout << "  Prob   : " << std::fixed << std::setprecision(6) 
                   << probability << "\n";
     }
 }
