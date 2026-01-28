@@ -8,7 +8,7 @@
 ParallelSearch::ParallelSearch(ToyCipher& cipher, const Config& config)
     : cipher(cipher), config(config) {
     
-    // Initialiser les compteurs alignés (évite le false sharing)
+    
     alignedCounts.reserve(config.numThreads);
     for (uint32_t i = 0; i < config.numThreads; i++) {
         alignedCounts.push_back(std::make_unique<AlignedCounter>());
@@ -16,10 +16,10 @@ ParallelSearch::ParallelSearch(ToyCipher& cipher, const Config& config)
 }
 
 Block ParallelSearch::functionF(Block right, uint32_t roundKey) const {
-    // Fonction F du toy cipher (S-Box + rotation)
+    
     Block temp = right ^ roundKey;
     
-    // S-Box approximée (8 bits de substitution)
+    
     static const uint8_t SBOX[256] = {
         0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
         0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
@@ -45,7 +45,7 @@ Block ParallelSearch::functionF(Block right, uint32_t roundKey) const {
         result |= ((Block)SBOX[byte]) << (i * 8);
     }
 
-    // Rotation circulaire
+    
     result = (result << 7) | (result >> 25);
     return result;
 }
@@ -56,11 +56,11 @@ void ParallelSearch::workerThread(
     uint64_t samplesStart,
     uint64_t samplesEnd) {
     
-    // Buffer local pour accumuler les différentielles avant de les verrouiller
+    
     std::unordered_map<Block, uint64_t> localBuffer;
 
     for (uint64_t i = samplesStart; i < samplesEnd; i++) {
-        // Générer un plaintext pseudo-aléatoire
+        
         Block x = static_cast<Block>(i ^ (0x12345678 ^ (i * 0x9E3779B9)));
 
         Block x1 = x;
@@ -71,14 +71,14 @@ void ParallelSearch::workerThread(
 
         Difference deltaOut = y1 ^ y2;
 
-        // Accumuler dans le buffer local (sans verrouillage)
+        
         localBuffer[deltaOut]++;
 
-        // Mise à jour locale du compteur aligné (accès concurrent léger)
+        
         alignedCounts[threadId]->value++;
     }
 
-    // Fusionner le buffer local avec la table globale (verrouillage une fois)
+    
     {
         std::lock_guard<std::mutex> lock(globalMutex);
         for (const auto& entry : localBuffer) {
@@ -87,7 +87,7 @@ void ParallelSearch::workerThread(
         }
     }
 
-    // Mettre à jour les stats globales
+    
     perfStats.totalSamples += (samplesEnd - samplesStart);
     perfStats.totalDifferentials++;
 }
@@ -104,11 +104,11 @@ DifferentialCount ParallelSearch::searchDifferentialsParallel(Difference deltaIn
 
     auto startTime = std::chrono::high_resolution_clock::now();
 
-    // Diviser le travail entre les threads
+    
     uint64_t totalSamples = config.samplesPerThread * config.numThreads;
     std::vector<std::thread> workers;
 
-    // Créer et lancer les worker threads
+    
     for (uint32_t i = 0; i < config.numThreads; i++) {
         uint64_t samplesStart = i * config.samplesPerThread;
         uint64_t samplesEnd = samplesStart + config.samplesPerThread;
@@ -123,7 +123,7 @@ DifferentialCount ParallelSearch::searchDifferentialsParallel(Difference deltaIn
         );
     }
 
-    // Attendre que tous les threads se terminent
+    
     for (auto& worker : workers) {
         if (worker.joinable()) {
             worker.join();
@@ -160,7 +160,7 @@ void ParallelSearch::printStatistics() const {
 
     std::cout << "Différentielles trouvées : " << globalDifferentials.size() << "\n";
     
-    // Afficher les meilleures différentielles
+    
     std::vector<std::pair<DifferentialPair, uint64_t>> sorted(
         globalDifferentials.begin(),
         globalDifferentials.end()

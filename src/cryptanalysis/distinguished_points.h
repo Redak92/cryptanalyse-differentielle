@@ -18,16 +18,16 @@
 class DistinguishedPoints {
 public:
     struct DistinguishedPoint {
-        Block value;           // La valeur du point distingué
-        Block startingPoint;   // D'où provient-il ? (pour remonter à la collision)
-        uint32_t walkLength;   // Nombre d'itérations pour atteindre ce point
-        uint32_t threadId;     // Quel thread l'a trouvé
+        Block value;           
+        Block startingPoint;   
+        uint32_t walkLength;   
+        uint32_t threadId;     
     };
 
     struct CollisionResult {
-        Block x;               // Premier point
-        Block y;               // Deuxième point
-        Block collision;       // G(x) = G(y)
+        Block x;               
+        Block y;               
+        Block collision;       
         Difference deltaIn;
         Difference deltaOut;
         bool found;
@@ -37,11 +37,11 @@ public:
      * Configuration des points distingués
      */
     struct Config {
-        uint32_t distinguishedBitCount = 16;  // k bits de poids faible à zéro
-        uint64_t maxWalkSteps = 10000;        // Limite d'itérations par marche
-        uint64_t maxMarches = 1000000;        // Nombre total de marches
+        uint32_t distinguishedBitCount = 16;  
+        uint64_t maxWalkSteps = 10000;        
+        uint64_t maxMarches = 1000000;        
         uint32_t numThreads = std::thread::hardware_concurrency();
-        Difference targetDeltaIn = 0x0001;    // Différence d'entrée à analyser
+        Difference targetDeltaIn = 0x0001;    
     };
 
     DistinguishedPoints(ToyCipher& cipher, const Config& config);
@@ -61,11 +61,11 @@ private:
     ToyCipher& cipher;
     Config config;
 
-    // Données thread-safe pour les points distingués
+    
     std::unordered_map<Block, DistinguishedPoint> distinguishedTable;
     mutable std::mutex tableWriteMutex;
 
-    // Statistiques
+    
     struct Stats {
         uint64_t totalWalks = 0;
         uint64_t collisionsFound = 0;

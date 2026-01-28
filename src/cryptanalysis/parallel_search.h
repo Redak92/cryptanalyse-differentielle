@@ -24,8 +24,8 @@ public:
     };
 
     struct AlignedCounter {
-        // Padding pour éviter les faux partages (false sharing)
-        // Chaque counter occupe sa propre ligne de cache (64 octets typical)
+        
+        
         alignas(64) std::atomic<uint64_t> value{0};
     };
 
@@ -51,14 +51,14 @@ private:
     ToyCipher& cipher;
     Config config;
 
-    // Résultats thread-safe avec alignement pour éviter le false sharing
+    
     std::vector<std::unique_ptr<AlignedCounter>> alignedCounts;
     
-    // Table globale des différentielles (protégée par mutex)
+    
     DifferentialCount globalDifferentials;
     mutable std::mutex globalMutex;
 
-    // Statistiques de performance
+    
     struct PerformanceStats {
         std::atomic<uint64_t> totalSamples{0};
         std::atomic<uint64_t> totalDifferentials{0};

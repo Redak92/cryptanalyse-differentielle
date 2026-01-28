@@ -8,21 +8,21 @@
 int main() {
     std::cout << "=== Cryptanalyse Différentielle Optimisée ===\n\n";
 
-    // Initialiser le chiffre
+    
     ToyCipher cipher(0xDEADBEEF, 4);
 
-    // --- Test 1 : Recherche basique ---
+    
     std::cout << "Test 1 : Recherche différentielle basique\n";
     DifferentialSearch searcher(cipher, 100000);
     DifferentialCount results = searcher.searchDifferentials(0x0001);
     std::cout << "Différentielles trouvées : " << results.size() << "\n\n";
 
-    // --- Test 2 : Recherche parallélisée ---
+    
     std::cout << "Test 2 : Recherche parallélisée\n";
     DifferentialCount parallelResults = searcher.searchDifferentialsParallel(0x0001, 4);
     std::cout << "Différentielles trouvées (parallèle) : " << parallelResults.size() << "\n\n";
 
-    // --- Test 3 : Points Distingués ---
+    
     std::cout << "Test 3 : Recherche par Points Distingués\n";
     DistinguishedPoints::Config dpConfig;
     dpConfig.numThreads = 4;
@@ -33,7 +33,7 @@ int main() {
     auto collisions = searcher.findCollisionsWithDistinguishedPoints(dpConfig);
     std::cout << "Collisions trouvées : " << collisions.size() << "\n\n";
 
-    // Afficher les statistiques
+    
     searcher.printStatistics();
 
     std::cout << "\n=== Fin de l'analyse ===\n";
