@@ -11,10 +11,6 @@
 #include <memory>
 #include <cstdint>
 
-/**
- * Recherche parallèle optimisée pour la cryptanalyse différentielle
- * Évite les faux partages (false sharing) en utilisant du padding
- */
 class ParallelSearch {
 public:
     struct Config {
@@ -24,41 +20,27 @@ public:
     };
 
     struct AlignedCounter {
-        
-        
         alignas(64) std::atomic<uint64_t> value{0};
     };
 
     ParallelSearch(ToyCipher& cipher, const Config& config);
     ~ParallelSearch() = default;
 
-    /**
-     * Recherche parallèle d'une différence d'entrée donnée
-     */
     DifferentialCount searchDifferentialsParallel(Difference deltaIn);
 
-    /**
-     * Analyser plusieurs différences en parallèle
-     */
     void analyzeMultipleDifferencesParallel(const std::vector<Difference>& deltaIns);
 
-    /**
-     * Afficher les statistiques
-     */
     void printStatistics() const;
 
 private:
     ToyCipher& cipher;
     Config config;
 
-    
     std::vector<std::unique_ptr<AlignedCounter>> alignedCounts;
-    
-    
+
     DifferentialCount globalDifferentials;
     mutable std::mutex globalMutex;
 
-    
     struct PerformanceStats {
         std::atomic<uint64_t> totalSamples{0};
         std::atomic<uint64_t> totalDifferentials{0};
@@ -66,9 +48,6 @@ private:
         mutable std::mutex statsMutex;
     } perfStats;
 
-    /**
-     * Worker thread : effectue l'analyse différentielle sur une portion
-     */
     void workerThread(
         uint32_t threadId,
         Difference deltaIn,
@@ -76,9 +55,6 @@ private:
         uint64_t samplesEnd
     );
 
-    /**
-     * Fonction F optimisée pour la parallélisation
-     */
     Block functionF(Block right, uint32_t roundKey) const;
 };
 

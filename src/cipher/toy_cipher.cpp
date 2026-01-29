@@ -1,8 +1,6 @@
 #include "toy_cipher.h"
 
-
 Block ToyCipher::sBox(Block value) {
-    
     static const uint8_t SBOX[256] = {
         0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
         0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
@@ -21,7 +19,7 @@ Block ToyCipher::sBox(Block value) {
         0xe0, 0xe6, 0xff, 0xb3, 0x33, 0x7d, 0xbd, 0x2b, 0x34, 0x34, 0xb9, 0xd0, 0x6d, 0xef, 0xac, 0x62,
         0x92, 0x95, 0xe4, 0x79, 0xe7, 0xc8, 0x37, 0x6d, 0x8d, 0xd5, 0x4e, 0xa9, 0x6c, 0x56, 0xf4, 0xea
     };
-    
+
     Block result = 0;
     for (int i = 0; i < 4; i++) {
         uint8_t byte = (value >> (i * 8)) & 0xFF;
@@ -30,27 +28,25 @@ Block ToyCipher::sBox(Block value) {
     return result;
 }
 
-ToyCipher::ToyCipher(Key key, int numRounds) 
+ToyCipher::ToyCipher(Key key, int numRounds)
     : masterKey(key), numRounds(numRounds) {}
 
 uint32_t ToyCipher::deriveRoundKey(int round) {
-    
-    return masterKey ^ ((round + 1) * 0x9E3779B9);  
+    return masterKey ^ ((round + 1) * 0x9E3779B9);
 }
 
 Block ToyCipher::functionF(Block right, uint32_t roundKey) {
     Block temp = right ^ roundKey;
     temp = sBox(temp);
-    temp = (temp << 7) | (temp >> 25);  
+    temp = (temp << 7) | (temp >> 25);
     return temp;
 }
 
 Block ToyCipher::feistelRounds(uint16_t initialL, uint16_t initialR, bool isEncryption) {
     uint16_t L = initialL;
     uint16_t R = initialR;
-    
+
     if (isEncryption) {
-        
         for (int i = 0; i < numRounds; i++) {
             uint32_t roundKey = deriveRoundKey(i);
             uint16_t F_result = functionF(R, roundKey) & 0xFFFF;
@@ -59,7 +55,6 @@ Block ToyCipher::feistelRounds(uint16_t initialL, uint16_t initialR, bool isEncr
             R = newR;
         }
     } else {
-        
         for (int i = numRounds - 1; i >= 0; i--) {
             uint32_t roundKey = deriveRoundKey(i);
             uint16_t F_result = functionF(R, roundKey) & 0xFFFF;
@@ -68,8 +63,7 @@ Block ToyCipher::feistelRounds(uint16_t initialL, uint16_t initialR, bool isEncr
             R = newR;
         }
     }
-    
-    
+
     Block result = ((uint32_t)R << 16) | L;
     return result;
 }

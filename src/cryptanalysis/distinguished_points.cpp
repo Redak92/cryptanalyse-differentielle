@@ -9,14 +9,11 @@ DistinguishedPoints::DistinguishedPoints(ToyCipher& cipher, const Config& config
     : cipher(cipher), config(config) {}
 
 bool DistinguishedPoints::isDistinguished(Block value) const {
-    
     uint32_t mask = (1U << config.distinguishedBitCount) - 1;
     return (value & mask) == 0;
 }
 
 Block DistinguishedPoints::functionG(Block x) const {
-    
-    
     Block encrypted = cipher.encrypt(x);
     Block rotated = (x << 5) | (x >> 27);
     return encrypted ^ rotated;
@@ -26,7 +23,6 @@ DistinguishedPoints::DistinguishedPoint DistinguishedPoints::performWalk(Block s
     Block current = startingPoint;
     uint32_t steps = 0;
 
-    
     while (!isDistinguished(current) && steps < config.maxWalkSteps) {
         current = functionG(current);
         steps++;
@@ -44,15 +40,12 @@ DistinguishedPoints::CollisionResult DistinguishedPoints::traceback(
     Block x1, Block y1,
     const DistinguishedPoint& x1Point,
     const DistinguishedPoint& y1Point) {
-    
     CollisionResult result;
     result.found = false;
 
-    
     Block x_current = x1;
     Block y_current = y1;
 
-    
     for (uint32_t i = 0; i < x1Point.walkLength; i++) {
         x_current = functionG(x_current);
     }
@@ -60,12 +53,9 @@ DistinguishedPoints::CollisionResult DistinguishedPoints::traceback(
         y_current = functionG(y_current);
     }
 
-    
     if (x_current == y_current) {
-        
         Block collision = x_current;
-        
-        
+
         Block x_before_dp = x1Point.startingPoint;
         Block y_before_dp = y1Point.startingPoint;
         Block encrypted_x = cipher.encrypt(x_before_dp);
@@ -86,27 +76,26 @@ void DistinguishedPoints::workerThread(uint32_t threadId, uint64_t marcheStart, 
     std::vector<CollisionResult> localCollisions;
 
     for (uint64_t marche = marcheStart; marche < marcheEnd; marche++) {
-        
         Block startPoint = static_cast<Block>(marche ^ (0xAAAAAAAA ^ (marche * 0x9E3779B9)));
 
-        
         DistinguishedPoint dpResult = performWalk(startPoint);
 
-        
-        if (!isDistinguished(dpResult.value)) {
-            continue;  
+        {
+            std::lock_guard<std::mutex> statsLock(stats.statsMutex);
+            stats.totalWalks++;
         }
 
-        
+        if (!isDistinguished(dpResult.value)) {
+            continue;
+        }
+
         {
             std::lock_guard<std::mutex> lock(tableWriteMutex);
 
             auto it = distinguishedTable.find(dpResult.value);
             if (it != distinguishedTable.end()) {
-                
                 DistinguishedPoint& existing = it->second;
-                
-                
+
                 Block x1 = startPoint;
                 Block y1 = existing.startingPoint;
 
@@ -129,18 +118,12 @@ void DistinguishedPoints::workerThread(uint32_t threadId, uint64_t marcheStart, 
                     }
                 }
             } else {
-                
                 distinguishedTable[dpResult.value] = dpResult;
                 {
                     std::lock_guard<std::mutex> statsLock(stats.statsMutex);
                     stats.distinguishedPointsFound++;
                 }
             }
-        }
-
-        {
-            std::lock_guard<std::mutex> statsLock(stats.statsMutex);
-            stats.totalWalks++;
         }
     }
 }
@@ -155,11 +138,10 @@ std::vector<DistinguishedPoints::CollisionResult> DistinguishedPoints::findColli
     std::cout << "  Nombre de threads : " << config.numThreads << "\n";
     std::cout << "  Itérations max par marche : " << config.maxWalkSteps << "\n";
 
-    
     uint64_t marchesParThread = config.maxMarches / config.numThreads;
     std::vector<std::thread> workers;
+    std::vector<std::vector<CollisionResult>> workerResults(config.numThreads);
 
-    
     for (uint32_t i = 0; i < config.numThreads; i++) {
         uint64_t marcheStart = i * marchesParThread;
         uint64_t marcheEnd = (i == config.numThreads - 1) ? config.maxMarches : (i + 1) * marchesParThread;
@@ -173,18 +155,18 @@ std::vector<DistinguishedPoints::CollisionResult> DistinguishedPoints::findColli
         );
     }
 
-    
     for (auto& worker : workers) {
         if (worker.joinable()) {
             worker.join();
         }
     }
 
-    
+    std::lock_guard<std::mutex> lock(tableWriteMutex);
     for (const auto& entry : distinguishedTable) {
-        if (allCollisions.size() < 100) {  
-            
-        }
+        CollisionResult collision;
+        collision.collision = entry.first;
+        collision.found = true;
+        allCollisions.push_back(collision);
     }
 
     return allCollisions;
