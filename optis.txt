@@ -1,5 +1,0 @@
-1) Points distingués -> Done
-2) Extern Sort
-3) Surrogates
-4) Threading -> Done 
-5) Trimming 
