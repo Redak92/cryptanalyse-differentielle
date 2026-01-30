@@ -1,0 +1,13 @@
+//
+// Created by alexandre on 30/01/2026.
+//
+
+#ifndef CRYPTANALYSE_DIFFERENTIELLE_SPECK_H
+#define CRYPTANALYSE_DIFFERENTIELLE_SPECK_H
+
+
+class Speck {
+};
+
+
+#endif //CRYPTANALYSE_DIFFERENTIELLE_SPECK_H

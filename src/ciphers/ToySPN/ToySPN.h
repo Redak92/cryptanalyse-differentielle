@@ -1,0 +1,13 @@
+//
+// Created by alexandre on 30/01/2026.
+//
+
+#ifndef CRYPTANALYSE_DIFFERENTIELLE_TOYSPN_H
+#define CRYPTANALYSE_DIFFERENTIELLE_TOYSPN_H
+
+
+class ToySPN {
+};
+
+
+#endif //CRYPTANALYSE_DIFFERENTIELLE_TOYSPN_H
