@@ -1,0 +1,125 @@
+\documentclass{article}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage[french, ruled, vlined]{algorithm2e}
+\usepackage{amsmath, amssymb}
+\usepackage{float}
+
+\title{TER}
+\author{Alexandre François}
+\date{February 2026}
+
+\begin{document}
+
+    \maketitle
+
+    \section{Recherche Exhaustive par Différence d'Entrée (Algorithme Naïf Optimisé)}\label{sec:recherche-exhaustive-par-difference-d'entree-(algorithme-naif-optimise)}
+
+    \subsection{Principe et Algorithme}\label{subsec:principe-et-algorithme}
+
+    \noindent \textbf{Problèmatique.} L'approche naïve, qui consisterait à tester toutes les paires de textes clairs $(x,y)$ possibles, possède une complexité prohibitive de $O(2^n)$. Pour un bloc de taille $n = 16$, cela représente déjà 4 milliards de tests. Pour $n = 64$, c'est physiquement impossible.
+
+    \vspace{0.2cm}
+
+    \noindent \textbf{Stratégie.} L'algorithme contourne l'explosion combinatoire en structurant la recherche autour des différences d'entrée $\alpha$. Au lieu de tester l'ensemble de l'espace, nous procédons par échantillonnage : pour chaque $\alpha$, nous générons un volume restreint de $c/p$ paires de messages. Cette approche permet de vérifier si une différence d'entrée "active" une différence de sortie $\beta$ particulière. Si une telle paire $(x, x \oplus \alpha)$ émerge du bruit de fond, elle confirme l'existence d'une faille sans qu'il soit nécessaire de parcourir les milliards de combinaisons possibles.
+
+    \vspace{0.2cm}
+
+    \noindent \textbf{Complexité.} Cette approche présente une complexité globale de $O(2^n \cdot \frac{1}{p})$. Elle reste ainsi envisageable pour des tailles de blocs modestes (par exemple jusqu'à $n = 32$ avec une puissance de calcul suffisante), mais devient impraticable pour des tailles standards comme $n = 64$.
+
+    \begin{algorithm}[H]
+        \caption{Recherche Différentielle Standard (Naïve Optimisée)}
+        \SetKwInOut{Input}{Entrée}
+        \SetKwInOut{Output}{Sortie}
+
+        \Input{Taille de bloc $n$, Probabilité cible $p$, Constante de succès $c$.}
+        \Output{Affichage des différentielles candidates $(\alpha, \beta)$ significatives.}
+
+        \For{toute différence d'entrée non nulle $\alpha \in \{0,1\}^n \setminus \{0\}$}{
+            Initialiser les compteurs $Count_\beta \leftarrow 0$\;
+
+            \tcp{Phase d'échantillonnage}
+            \For{$k=1$ \KwTo $\lceil c / p \rceil$}{
+                Choisir aléatoirement $x \in \{0,1\}^n$\;
+                Calculer $\beta = E(x) \oplus E(x \oplus \alpha)$\;
+                $Count_\beta \leftarrow Count_\beta + 1$\;
+            }
+
+            \tcp{Phase d'analyse}
+            \ForEach{$\beta$ observé tel que $Count_\beta > 1$}{
+                Afficher $(\alpha, \beta)$;
+            }
+        }
+    \end{algorithm}
+
+    \subsection{Analyse Statistique et Dimensionnement}
+
+    La fiabilité de cet algorithme ne repose pas sur le hasard, mais sur un dimensionnement rigoureux de l'échantillon $N$. Nous devons distinguer une véritable faille cryptographique (le Signal) des coïncidences fortuites (le Bruit). Cette section démontre pourquoi un choix naïf de $N$ conduit à l'échec et justifie l'introduction d'un facteur de sécurité $c$.
+
+    \subsubsection{Les limites de l'approche unitaire ($N=1/p$)}
+
+    Intuitivement, pour détecter une caractéristique de probabilité $p$, on pourrait penser qu'il suffit de tester $N = 1/p$ paires, espérant ainsi obtenir en moyenne une occurrence. Cependant, cette intuition est trompeuse en cryptanalyse.
+
+    Modélisons le nombre d'apparitions de la différentielle par une variable aléatoire $X$. Dans le cas d'un chiffrement aléatoire, ce processus de comptage suit une loi binomiale $B(N, P_{rand})$.
+    Puisque la probabilité $P_{rand} = 2^{-n}$ est infime et que le nombre d'essais $N$ est grand, nous pouvons appliquer le Théorème des événements rares pour approximer cette distribution par une loi de Poisson de paramètre $\lambda = N \cdot 2^{-n}$.
+    Cette modélisation est fondamentale pour établir le rapport Signal/Bruit (S/N) qui détermine la complexité de l'attaque\footnote{Le concept de Rapport Signal/Bruit en cryptanalyse différentielle a été introduit par E. Biham et A. Shamir dans \textit{"Differential Cryptanalysis of DES-like Cryptosystems"} (1991). Ils y établissent que le compteur de la bonne clé doit se distinguer statistiquement du bruit de fond généré par les mauvaises clés.}.
+
+    Si nous fixons $N=1/p$, l'espérance est effectivement de $\lambda = 1$. Or, la probabilité mathématique de ne jamais observer la différentielle (cas $k=0$) est loin d'être négligeable :
+    $$P(X = 0) = e^{-1} \approx 36.8\%$$
+    Cela signifie qu'une fois sur trois, l'attaque échoue simplement par manque de chance.
+
+    Le problème s'aggrave lorsque l'on considère le filtrage du bruit. Pour éviter les faux positifs, notre algorithme ignore les événements uniques ($Count=1$). L'attaque échoue donc si la différentielle apparaît 0 fois ou 1 seule fois. La probabilité d'échec cumulée devient critique :
+    $$P(\text{Échec}) = P(X=0) + P(X=1) = e^{-1} + e^{-1} \approx 73.6\%$$
+    Avec un taux d'échec supérieur à 70\%, l'approche unitaire est inutilisable.
+
+
+
+    \subsubsection{Optimisation via le facteur de sécurité ($N=c/p$)}
+
+    Pour pallier ce défaut, nous introduisons un facteur de sécurité $c$ (avec $c > 1$), en fixant la taille de l'échantillon à $N = c/p$. L'espérance du nombre de collisions devient alors $\lambda = c$.
+
+    Nous cherchons la valeur de $c$ qui maximise la probabilité que la différentielle apparaisse au moins 2 fois (condition de succès). Cette probabilité est donnée par :
+    $$ P(\text{Succès}) = P(X \ge 2) = 1 - e^{-c}(1 + c) $$
+
+    L'analyse de cette fonction montre une progression rapide de la fiabilité :
+
+    \begin{table}[H]
+        \centering
+        \begin{tabular}{|c|c|c|c|}
+            \hline
+            \textbf{Facteur ($c$)} & \textbf{Espérance ($\lambda$)} & \textbf{Probabilité d'Échec} & \textbf{Probabilité de Succès} \\
+            \hline
+            $c=1$ & 1 & 73.6\% & 26.4\% \\
+            \hline
+            $c=2$ & 2 & 40.6\% & 59.4\% \\
+            \hline
+            $c=3$ & 3 & 19.9\% & \textbf{80.1\%} \\
+            \hline
+            $c=4$ & 4 & 9.2\% & \textbf{90.8\%} \\
+            \hline
+            $c=5$ & 5 & 4.0\% & \textbf{96.0\%} \\
+            \hline
+        \end{tabular}
+        \caption{Impact du facteur $c$ sur la détection de la faille.}
+        \label{tab:poisson_c}
+    \end{table}
+
+    Il apparaît clairement qu'un facteur $c \ge 4$ est nécessaire pour garantir un taux de détection supérieur à 90\%, rendant l'attaque statistiquement robuste.
+
+    \subsubsection{Validation finale : Rapport Signal/Bruit}
+
+    Augmenter $N$ améliore la détection du signal, mais augmente aussi mécaniquement le nombre de fausses collisions dues au hasard. Il faut donc vérifier que notre seuil de filtrage ($Count > 1$) reste capable de discriminer le vrai du faux.
+
+    Prenons l'exemple d'un chiffrement SPN ($n=16$) avec une faille cible $p=2^{-10}$ et un facteur $c=4$. Nous comparons deux hypothèses :
+    \begin{itemize}
+        \item \textbf{Hypothèse du Signal (La faille) :} L'espérance est $\lambda_S = c = 4$.
+        \item \textbf{Hypothèse du Bruit (Le hasard) :} L'espérance est $\lambda_B = N \cdot 2^{-n} = \frac{4}{2^{-10} \cdot 2^{16}} = 2^{-4} = 0.0625$.
+    \end{itemize}
+
+    La probabilité de franchir le seuil de 2 collisions est radicalement différente pour les deux cas :
+    $$ P(Signal \ge 2) \approx \mathbf{90.8\%} $$
+    $$ P(Bruit \ge 2) \approx \mathbf{0.19\%} $$
+
+    \textbf{Conclusion :} Le critère choisi agit comme un filtre passe-haut très sélectif. Il capture la quasi-totalité des différentielles réelles tout en rejetant 99.8\% du bruit aléatoire.
+
+\end{document}

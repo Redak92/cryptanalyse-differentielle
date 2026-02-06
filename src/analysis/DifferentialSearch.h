@@ -31,7 +31,7 @@ public:
     // --- ALGO 2 : NAÏF OPTIMISÉ ---
     // Complexité : O(2^n * p^-1).
     // Pour chaque différence d'entrée alpha possible, on teste k paires.
-    std::vector<DifferentialCandidate> runStandardSearch(uint64_t pairsPerDifference);
+    [[nodiscard]] std::vector<DifferentialCandidate> runStandardSearch(uint64_t pairsPerDifference) const;
 
     // --- ALGO 3 : FONDAMENTAL ---
     // Complexité : O(2^{n/2} * p^-1).
