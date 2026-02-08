@@ -1,5 +1,5 @@
 #include <iostream>
-#include "Sbox.h"
+#include "TransformationArrays.h"
 
 using namespace std ;
 
@@ -23,4 +23,17 @@ const uint8_t Sbox::SBOX_ARRAY[256] = {99,124,119,123,242,107,111,197,48,1,103,4
 // Rajouter des limites sur la valeur que peut prendre le message       
 uint8_t Sbox::substitute(uint8_t message){
     return SBOX_ARRAY[message] ;
+}
+
+const uint16_t Pbox::PBOX_ARRAY[16] = {5,9,0,13,7,2,11,14,1,4,12,8,3,15,6,10};    
+
+uint16_t Pbox::shuffle(uint16_t message){
+    uint16_t result = 0 ;    
+    for(int i = 15; i >= 0; i-- ){
+        
+        uint16_t val = 0x0001 & (message >> i) ;
+        
+        result = val << Pbox::PBOX_ARRAY[i] | result ;
+    }
+    return result ;
 }

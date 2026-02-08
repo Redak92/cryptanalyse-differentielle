@@ -1,7 +1,5 @@
-#ifndef SBOX
-#define SBOX
-
-// Possibilité de consolider Pbox et Sbox en une seule classe 
+#ifndef TRANSFORMATION_ARRAYS
+#define TRANSFORMATION_ARRAYS
 
 // On ajoutera la table inverse et la fonction inv_substitute plus tard 
 class Sbox{
@@ -16,5 +14,13 @@ class Sbox{
 
 } ;
 
+class Pbox{
+    private :
+    static const uint16_t PBOX_ARRAY[16] ; 
 
-#endif 
+    public:
+    Pbox() ;
+    static uint16_t shuffle(uint16_t message) ;
+} ;
+
+#endif

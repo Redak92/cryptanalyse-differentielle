@@ -9,8 +9,7 @@
 #include "ToySPN.h"
 
 #include "../../utils/KeySchedule.cpp"
-#include "../../utils/Sbox.cpp"
-#include "../../utils/Pbox.cpp"
+#include "../../utils/TransformationArrays.cpp"
 
 using namespace std ;
 
