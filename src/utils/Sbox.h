@@ -6,7 +6,7 @@
 // On ajoutera la table inverse et la fonction inv_substitute plus tard 
 class Sbox{
     private : 
-    // Sbox 8bit d'AES, initialisé avec la fontion initialize_aes_sbox ci-dessus    
+    // Sbox 8bit d'AES, initialisé avec la fontion initialize_aes_sbox issue de la page wikipedia de Rijndael S-box    
     static const uint8_t SBOX_ARRAY[256] ;
     
     public : 
@@ -16,7 +16,5 @@ class Sbox{
 
 } ;
 
-// Utilisé uniquement pour initialiser la sbox, issue de la page wikipedia de Rijndael S-box
-// void initialize_aes_sbox(uint8_t sbox[256]) ;
 
 #endif 
