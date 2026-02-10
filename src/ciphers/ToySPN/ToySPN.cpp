@@ -10,25 +10,29 @@
 
 using namespace std ;
 
-ToySPN::ToySPN(int init_bloc_size, uint32_t init_key,int init_rounds_number)
-    : block_size(init_bloc_size) , key(init_key), rounds_number(init_rounds_number)
+ToySPN::ToySPN(int init_bloc_size)
+    : block_size(init_bloc_size)
 {}
     
 int ToySPN::getBlockSize() const {
-    return ToySPN::block_size ;
+    return ToySPN::block_size ; 
 }
 
-int ToySPN::getRoundsNumber() const {
-    return ToySPN::rounds_number ;
+void ToySPN::setRoundsNumber(int rounds_nb) {
+    ToySPN::rounds_number = rounds_nb ;
 }
 
-// SPN avec clé de 32bits et une taille de bloc de 16 bits
-uint16_t ToySPN::encrypt(uint16_t message) const {
+void ToySPN::setKey(Key key) {
+    ToySPN::key = key;
+}
 
-    uint16_t result = message ;
+// SPN avec clé de 16bits et une taille de bloc de 16 bits
+Block ToySPN::encrypt(Block message) const {
+
+    Block result = message ;
     // Génération des round keys 
-    int rounds_nb = ToySPN::getRoundsNumber() ;
-    vector<uint16_t> keys = KeySchedule::TEA_KeyS(ToySPN::key,rounds_nb) ;
+    int rounds_nb = ToySPN::rounds_number ;
+    vector<Block> keys = KeySchedule::simplePermutation(ToySPN::key,rounds_nb) ;
 
     for(int i = 0 ; i < rounds_nb-1; i++){
         // XOR avec la clé du round actuel 
@@ -50,12 +54,12 @@ uint16_t ToySPN::encrypt(uint16_t message) const {
     return result ^ keys.at(rounds_nb-1) ;
 }
 
-uint16_t ToySPN::decrypt(uint16_t message) const {
+Block ToySPN::decrypt(Block message) const {
 
-    uint16_t result = message ;
+    Block result = message ;
     // Génération des round keys 
-    int rounds_nb = ToySPN::getRoundsNumber() ;
-    vector<uint16_t> keys = KeySchedule::TEA_KeyS(ToySPN::key,rounds_nb) ;
+    int rounds_nb = ToySPN::rounds_number ;
+    vector<Block> keys = KeySchedule::simplePermutation(ToySPN::key,rounds_nb) ;
 
     for(int i = rounds_nb-1 ; i > 0 ; i--){
         // XOR avec la clé du round actuel 
@@ -63,7 +67,6 @@ uint16_t ToySPN::decrypt(uint16_t message) const {
         
         // Permutation par la PBOX
         result = Pbox::decrypt(result) ;
-        
         
         // Substitution par la SBOX 
         uint8_t left = result >> 8 ;
@@ -80,24 +83,86 @@ uint16_t ToySPN::decrypt(uint16_t message) const {
     return result ^ keys.at(0) ;
 }
 
-/* à effacer
-int main(){
+vector<Block> KeySchedule::simplePermutation(Key key,int rounds_nb){
+    vector<Block> keys(rounds_nb) ;
+    Block buffer = key ;
     
-    ToySPN cypher(16,0x45678120,2) ;
-    
-    // int nb_tours = 2 ;
-    // uint32_t key = 0x45678120 ;
-    uint16_t message = 0x4567 ;
-    
-    cout << message << endl  ;
-    uint16_t val = cypher.encrypt(message) ;
-    cout << val << endl ;
-    uint16_t nval = cypher.decrypt(val) ;
-    cout << nval << endl ;
+    // Fait passer la clé rounds_nb fois par la Pbox
+    for(int i = 0 ; i < rounds_nb; i++){
+        keys.at(i) = Pbox::encrypt(buffer) ;       
+        buffer = keys.at(i) ;
+    }
 
-    return 0 ;
+    return keys ;
+} 
+
+const uint8_t Sbox::SBOX_ARRAY[256] = {99,124,119,123,242,107,111,197,48,1,103,43,254,215,171,118,
+                202,130,201,125,250,89,71,240,173,212,162,175,156,164,114,192,
+                183,253,147,38,54,63,247,204,52,165,229,241,113,216,49,21,
+                4,199,35,195,24,150,5,154,7,18,128,226,235,39,178,117,
+                9,131,44,26,27,110,90,160,82,59,214,179,41,227,47,132,
+                83,209,0,237,32,252,177,91,106,203,190,57,74,76,88,207,
+                208,239,170,251,67,77,51,133,69,249,2,127,80,60,159,168,
+                81,163,64,143,146,157,56,245,188,182,218,33,16,255,243,210,
+                205,12,19,236,95,151,68,23,196,167,126,61,100,93,25,115,
+                96,129,79,220,34,42,144,136,70,238,184,20,222,94,11,219,
+                224,50,58,10,73,6,36,92,194,211,172,98,145,149,228,121,
+                231,200,55,109,141,213,78,169,108,86,244,234,101,122,174,8,
+                186,120,37,46,28,166,180,198,232,221,116,31,75,189,139,138,
+                112,62,181,102,72,3,246,14,97,53,87,185,134,193,29,158,
+                225,248,152,17,105,217,142,148,155,30,135,233,206,85,40,223,
+                140,161,137,13,191,230,66,104,65,153,45,15,176,84,187,22} ;
+
+const uint8_t Sbox::INVERSE_SBOX_ARRAY[256] = { 82,9,106,213,48,54,165,56,191,64,163,158,129,243,215,251,
+                124,227,57,130,155,47,255,135,52,142,67,68,196,222,233,203,
+                84,123,148,50,166,194,35,61,238,76,149,11,66,250,195,78,
+                8,46,161,102,40,217,36,178,118,91,162,73,109,139,209,37,
+                114,248,246,100,134,104,152,22,212,164,92,204,93,101,182,146,
+                108,112,72,80,253,237,185,218,94,21,70,87,167,141,157,132,
+                144,216,171,0,140,188,211,10,247,228,88,5,184,179,69,6,
+                208,44,30,143,202,63,15,2,193,175,189,3,1,19,138,107,
+                58,145,17,65,79,103,220,234,151,242,207,206,240,180,230,115,
+                150,172,116,34,231,173,53,133,226,249,55,232,28,117,223,110,
+                71,241,26,113,29,41,197,137,111,183,98,14,170,24,190,27,
+                252,86,62,75,198,210,121,32,154,219,192,254,120,205,90,244,
+                31,221,168,51,136,7,199,49,177,18,16,89,39,128,236,95,
+                96,81,127,169,25,181,74,13,45,229,122,159,147,201,156,239,
+                160,224,59,77,174,42,245,176,200,235,187,60,131,83,153,97,
+                23,43,4,126,186,119,214,38,225,105,20,99,85,33,12,125 } ;
+
+uint8_t Sbox::encrypt(uint8_t message){
+    return SBOX_ARRAY[message] ;
 }
-*/
 
+uint8_t Sbox::decrypt(uint8_t message){
+    return INVERSE_SBOX_ARRAY[message] ;
+}
 
+// Définition des attributs de Pbox 
 
+const uint8_t Pbox::PBOX_ARRAY[16] = {5,9,0,13,7,2,11,14,1,4,12,8,3,15,6,10} ;    
+
+const uint8_t Pbox::INVERSE_PBOX_ARRAY[16] = {2,8,5,12,9,0,14,4,11,1,15,6,10,3,7,13} ;
+
+Block Pbox::encrypt(Block message){
+    Block result = 0 ;    
+    for(int i = 15; i >= 0; i-- ){
+        // masque pour isoler le bit selectionné par l'index 
+        Block val = 0x0001 & (message >> i) ;
+        // on décale le bit à sa nouvelle position 
+        result = val << Pbox::PBOX_ARRAY[i] | result ;
+    }
+    return result ;
+}
+
+// Même logique que pour le chiffrement 
+Block Pbox::decrypt(Block message){
+    Block result = 0 ;    
+    for(int i = 15; i >= 0; i-- ){
+        
+        Block val = 0x0001 & (message >> i) ;
+        
+        result = val << Pbox::INVERSE_PBOX_ARRAY[i] | result ;
+    }
+    return result ;
+}
