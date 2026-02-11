@@ -22,10 +22,7 @@ constexpr uint32_t NUM_FEISTEL_ROUNDS = 32;
  *   - Final swap applied
  *
  * Round function F(R, K):
- *   1. Expansion: 6-bit → 8-bit (with repeated bits)
- *   2. Key mixing: XOR with 8-bit round key
- *   3. Substitution: Split into two 4-bit parts, apply S-boxes
- *   4. Permutation: Permute 8 bits and compress to 6 bits
+ *   Simple 6-bit S-box: SBOX6[(R ^ K) & 0x3F]
  */
 class CustomFeistel : public ICipher
 {
@@ -40,40 +37,25 @@ public:
 private:
     static constexpr uint32_t BLOCK_BITS = 12;
     static constexpr uint32_t HALF_BITS = 6;
-    static constexpr uint32_t SUBKEY_BITS = 8;
-    static constexpr uint32_t SBOX_SIZE = 16;
+    static constexpr uint32_t SBOX6_SIZE = 64;
 
     uint16_t master_key;
     std::array<uint8_t, NUM_FEISTEL_ROUNDS> round_keys;
 
-    
-    static constexpr uint8_t SBOX0[SBOX_SIZE] = {
-        0xE, 0x4, 0xD, 0x1, 0x2, 0xF, 0xB, 0x8,
-        0x3, 0xA, 0x6, 0xC, 0x5, 0x9, 0x0, 0x7
+    // S-box 6 bits -> 6 bits (64 entrées)
+    static constexpr uint8_t SBOX6[SBOX6_SIZE] = {
+        0x23, 0x15, 0x38, 0x0E, 0x2C, 0x19, 0x07, 0x31,
+        0x1A, 0x26, 0x0D, 0x3F, 0x12, 0x2E, 0x05, 0x39,
+        0x34, 0x08, 0x1D, 0x2B, 0x16, 0x00, 0x3A, 0x0C,
+        0x21, 0x1F, 0x0A, 0x36, 0x03, 0x2D, 0x18, 0x24,
+        0x0F, 0x33, 0x1E, 0x28, 0x11, 0x3D, 0x06, 0x2A,
+        0x1C, 0x30, 0x09, 0x37, 0x02, 0x1B, 0x3E, 0x14,
+        0x29, 0x0B, 0x35, 0x1A, 0x22, 0x04, 0x3C, 0x10,
+        0x2F, 0x13, 0x27, 0x01, 0x3B, 0x17, 0x0A, 0x20
     };
 
-    static constexpr uint8_t SBOX1[SBOX_SIZE] = {
-        0x3, 0xA, 0xE, 0x4, 0x9, 0xF, 0x6, 0x1,
-        0xD, 0x0, 0xB, 0x5, 0xC, 0x2, 0x7, 0x8
-    };
-
-    
-    
-    static constexpr uint8_t EXPANSION[8] = {
-        5, 4, 3, 2, 1, 0, 5, 4
-    };
-
-    
-    static constexpr uint8_t PERMUTATION[6] = {
-        0, 2, 4, 5, 6, 7
-    };
-
-    
     void schedule_key();
     uint8_t round_function(uint8_t right_half, uint8_t round_key) const;
-    uint8_t expand(uint8_t input) const;
-    uint8_t substitute(uint8_t input) const;
-    uint8_t permute_compress(uint8_t input) const;
 };
 
 } 
