@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../analysis/naive_analysis.h"
+#include "../../interfaces/ICipher.h"
 #include <cstdint>
 #include <array>
 
@@ -27,12 +27,14 @@ constexpr uint32_t NUM_FEISTEL_ROUNDS = 32;
  *   3. Substitution: Split into two 4-bit parts, apply S-boxes
  *   4. Permutation: Permute 8 bits and compress to 6 bits
  */
-class CustomFeistel : public BlockCipher
+class CustomFeistel : public ICipher
 {
 public:
     explicit CustomFeistel(uint16_t master_key);
 
     Block encrypt(Block plaintext) const override;
+    Block decrypt(Block ciphertext) const override;
+    int getBlockSize() const override;
     uint32_t block_size_bits() const override;
 
 private:

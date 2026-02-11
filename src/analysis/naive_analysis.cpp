@@ -130,7 +130,7 @@ Block make_pair_second(Block x, Block delta)
 }
 
 std::pair<Block, Block> compute_cipher_pair(
-    const BlockCipher& cipher,
+    const ICipher& cipher,
     Block x,
     Block delta_in)
 {
@@ -146,7 +146,7 @@ Block compute_output_difference(Block c1, Block c2)
 
 
 void process_single_pair(
-    const BlockCipher& cipher,
+    const ICipher& cipher,
     Block x,
     Block delta_in,
     DifferentialDistributionTable& ddt)
@@ -157,7 +157,7 @@ void process_single_pair(
 }
 
 void process_fixed_input_difference(
-    const BlockCipher& cipher,
+    const ICipher& cipher,
     Block delta_in,
     DifferentialDistributionTable& ddt)
 {
@@ -169,7 +169,7 @@ void process_fixed_input_difference(
 }
 
 void compute_full_ddt_exhaustive(
-    const BlockCipher& cipher,
+    const ICipher& cipher,
     DifferentialDistributionTable& ddt)
 {
     uint64_t block_count = ddt.table_dimension();
@@ -278,7 +278,7 @@ void export_ddt_to_csv(const DifferentialDistributionTable& ddt,
 
 
 DifferentialPair run_exhaustive_differential_analysis(
-    const BlockCipher& cipher)
+    const ICipher& cipher)
 {
     uint32_t n_bits = cipher.block_size_bits();
     DifferentialDistributionTable ddt(n_bits);

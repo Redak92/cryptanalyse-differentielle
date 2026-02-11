@@ -18,6 +18,9 @@ public:
 
     // Pour savoir si on attaque du 16 bits, 32 bits, etc.
     virtual int getBlockSize() const = 0;
+    
+    // Alias pour compatibilité avec l'analyse différentielle
+    virtual uint32_t block_size_bits() const { return static_cast<uint32_t>(getBlockSize()); }
 };
 
 

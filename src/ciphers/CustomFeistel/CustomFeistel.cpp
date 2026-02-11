@@ -90,4 +90,31 @@ uint32_t CustomFeistel::block_size_bits() const
     return BLOCK_BITS;
 }
 
+int CustomFeistel::getBlockSize() const
+{
+    return static_cast<int>(BLOCK_BITS);
+}
+
+Block CustomFeistel::decrypt(Block ciphertext) const
+{
+    uint16_t block = ciphertext & 0xFFF;
+    uint8_t L = (block >> HALF_BITS) & 0x3F;
+    uint8_t R = block & 0x3F;
+
+    // Undo final swap
+    uint8_t tmp = L;
+    L = R;
+    R = tmp;
+
+    // Reverse rounds
+    for (int round = NUM_FEISTEL_ROUNDS - 1; round >= 0; --round)
+    {
+        uint8_t temp = R;
+        R = L;
+        L = temp ^ round_function(L, round_keys[round]);
+    }
+
+    return (static_cast<Block>(L) << HALF_BITS) | R;
+}
+
 }

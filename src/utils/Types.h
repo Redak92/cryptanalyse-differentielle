@@ -7,10 +7,10 @@
 
 #include <cstdint>
 
-// Pour l'instant, on fixe à 16 bits pour les jouets.
-// Pour SPECK complet, il faudra peut-être passer à uint64_t.
-using Block = uint16_t;
-using Difference = uint16_t;
-using Key = uint16_t;  // Ou plus grand selon le Key Schedule
+// Utilisation de uint64_t pour supporter des blocs jusqu'à 64 bits.
+// Pour SPECK complet et autres ciphers larges.
+using Block = uint64_t;
+using Difference = uint64_t;
+using Key = uint64_t;
 
 #endif //CRYPTANALYSE_DIFFERENTIELLE_TYPES_H

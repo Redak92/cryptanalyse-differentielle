@@ -4,11 +4,12 @@
 #include <array>
 #include <string>
 #include <utility>
+#include "../interfaces/ICipher.h"
 
 namespace diffcrypto
 {
 
-using Block  = uint64_t;     
+// Block est déjà défini dans Types.h (inclus via ICipher.h)
 using Count  = uint64_t;
 using Prob   = double;
 
@@ -51,21 +52,12 @@ private:
     size_t index(Block dx, Block dy) const;
 };
 
-class BlockCipher
-{
-public:
-    virtual ~BlockCipher() = default;
-
-    virtual Block encrypt(Block plaintext) const = 0;
-    virtual uint32_t block_size_bits() const = 0;
-};
-
 Block xor_blocks(Block a, Block b);
 
 Block make_pair_second(Block x, Block delta);
 
 std::pair<Block, Block> compute_cipher_pair(
-    const BlockCipher& cipher,
+    const ICipher& cipher,
     Block x,
     Block delta_in
 );
@@ -73,20 +65,20 @@ std::pair<Block, Block> compute_cipher_pair(
 Block compute_output_difference(Block c1, Block c2);
 
 void process_single_pair(
-    const BlockCipher& cipher,
+    const ICipher& cipher,
     Block x,
     Block delta_in,
     DifferentialDistributionTable& ddt
 );
 
 void process_fixed_input_difference(
-    const BlockCipher& cipher,
+    const ICipher& cipher,
     Block delta_in,
     DifferentialDistributionTable& ddt
 );
 
 void compute_full_ddt_exhaustive(
-    const BlockCipher& cipher,
+    const ICipher& cipher,
     DifferentialDistributionTable& ddt
 );
 
@@ -116,7 +108,7 @@ void export_ddt_to_csv(const DifferentialDistributionTable& ddt,
                        const std::string& filename);
 
 DifferentialPair run_exhaustive_differential_analysis(
-    const BlockCipher& cipher
+    const ICipher& cipher
 );
 
 } 
