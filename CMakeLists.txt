@@ -20,7 +20,7 @@ add_library(crypto_core
         src/analysis/naive_analysis.cpp
         src/ciphers/CustomFeistel/CustomFeistel.cpp
         # src/ciphers/ToySPN/ToySPN.cpp
-        # src/ciphers/Speck/Speck.cpp
+        src/ciphers/Speck/Speck.cpp
 )
 
 # Exécutables
@@ -30,5 +30,5 @@ target_link_libraries(demo_spn crypto_core)
 add_executable(differential_analysis apps/main_differential.cpp)
 target_link_libraries(differential_analysis crypto_core)
 
-# add_executable(demo_speck apps/demo_speck.cpp)
-# target_link_libraries(demo_speck crypto_core)
+add_executable(demo_speck apps/demo_speck.cpp)
+target_link_libraries(demo_speck crypto_core)
