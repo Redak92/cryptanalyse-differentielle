@@ -15,7 +15,10 @@ void CustomFeistel::schedule_key()
 
     for (int i = 0; i < NUM_FEISTEL_ROUNDS; ++i)
     {
-        uint16_t rotated = (key << (i + 1)) | (key >> (16 - (i + 1)));
+        // Rotation modulo 16 pour éviter les décalages invalides (>= 16 bits)
+        int shift = (i + 1) % 16;
+        uint16_t rotated = (key << shift) | (key >> (16 - shift));
+        
         // Clé de tour sur 6 bits pour correspondre à la S-box
         uint8_t round_key = static_cast<uint8_t>((rotated ^ (0xA5 + i * 0x33)) & 0x3F);
         round_keys[i] = round_key;
