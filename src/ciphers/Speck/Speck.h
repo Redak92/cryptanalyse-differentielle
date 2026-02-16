@@ -8,7 +8,6 @@
 #include "interfaces/ICipher.h"
 #include <vector>
 
-
 class Speck : public ICipher {
 public:
     /**
@@ -18,17 +17,18 @@ public:
     * @param master_key Clé de 64 bits
     * @param rounds Nombre de tours (Standard = 22, mais modifiable pour la cryptanalyse (voir page Wikipédia))
     */
-    explicit Speck(uint64_t master_key, int rounds = 22);
+    explicit Speck(Key master_key, int rounds = 22);
 
     // --- Interface ICipher ---
     [[nodiscard]] Block encrypt(Block plaintext) const override;
+
     [[nodiscard]] Block decrypt(Block ciphertext) const override;
 
     // Speck 32/64 a toujours une taille de bloc de 32 bits
     [[nodiscard]] int getBlockSize() const override { return 32; }
 
 private:
-    uint64_t master_key;
+    Key master_key;
     int num_rounds;
     std::vector<uint16_t> round_keys;
 

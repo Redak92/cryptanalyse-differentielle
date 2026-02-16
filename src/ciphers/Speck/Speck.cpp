@@ -7,9 +7,9 @@
 
 // Constantes : Speck 32/64 : Alpha = 7, Beta = 2
 static constexpr int ALPHA = 7;
-static constexpr int BETA  = 2;
+static constexpr int BETA = 2;
 
-Speck::Speck(const uint64_t master_key, int rounds) : master_key(master_key), num_rounds(rounds) {
+Speck::Speck(const Key master_key, const int rounds) : master_key(master_key), num_rounds(rounds) {
     scheduleKeys();
 }
 
