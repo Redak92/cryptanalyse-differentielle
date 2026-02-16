@@ -26,7 +26,6 @@ public:
 
     // Speck 32/64 a toujours une taille de bloc de 32 bits
     [[nodiscard]] int getBlockSize() const override { return 32; }
-    [[nodiscard]] uint32_t block_size_bits() const override { return 32; }
 
 private:
     uint64_t master_key;
