@@ -32,7 +32,6 @@ public:
     Block encrypt(Block plaintext) const override;
     Block decrypt(Block ciphertext) const override;
     int getBlockSize() const override;
-    uint32_t block_size_bits() const override;
 
 private:
     static constexpr uint32_t BLOCK_BITS = 12;

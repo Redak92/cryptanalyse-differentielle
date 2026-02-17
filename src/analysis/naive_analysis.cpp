@@ -280,7 +280,7 @@ void export_ddt_to_csv(const DifferentialDistributionTable& ddt,
 DifferentialPair run_exhaustive_differential_analysis(
     const ICipher& cipher)
 {
-    uint32_t n_bits = cipher.block_size_bits();
+    uint32_t n_bits = cipher.getBlockSize();
     DifferentialDistributionTable ddt(n_bits);
 
     compute_full_ddt_exhaustive(cipher, ddt);

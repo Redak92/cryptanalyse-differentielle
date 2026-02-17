@@ -22,7 +22,6 @@ struct DifferentialPair
 
 struct CipherParams
 {
-    uint32_t block_size_bits;   
     uint64_t total_plaintexts;  
 };
 

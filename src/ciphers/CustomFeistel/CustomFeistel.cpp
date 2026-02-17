@@ -53,11 +53,6 @@ Block CustomFeistel::encrypt(Block plaintext) const
     return (static_cast<Block>(L) << HALF_BITS) | R;
 }
 
-uint32_t CustomFeistel::block_size_bits() const
-{
-    return BLOCK_BITS;
-}
-
 int CustomFeistel::getBlockSize() const
 {
     return static_cast<int>(BLOCK_BITS);
