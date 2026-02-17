@@ -5,6 +5,7 @@
 #include <string>
 #include <utility>
 #include "../interfaces/ICipher.h"
+#include "../utils/BitUtils.h"
 
 namespace diffcrypto
 {
@@ -51,17 +52,11 @@ private:
     size_t index(Block dx, Block dy) const;
 };
 
-Block xor_blocks(Block a, Block b);
-
-Block make_pair_second(Block x, Block delta);
-
 std::pair<Block, Block> compute_cipher_pair(
     const ICipher& cipher,
     Block x,
     Block delta_in
 );
-
-Block compute_output_difference(Block c1, Block c2);
 
 void process_single_pair(
     const ICipher& cipher,
@@ -95,19 +90,12 @@ std::vector<DifferentialPair> find_global_best_differentials_top_n(
     size_t n
 );
 
-uint64_t number_of_blocks(uint32_t n_bits);
-
-bool next_block(Block& value, uint32_t n_bits);
-
-Prob compute_probability(Count count, uint64_t total);
-
 void compute_all_probabilities(DifferentialDistributionTable& ddt);
 void print_ddt_summary(const DifferentialDistributionTable& ddt);
-void export_ddt_to_csv(const DifferentialDistributionTable& ddt,
-                       const std::string& filename);
 
 DifferentialPair run_exhaustive_differential_analysis(
     const ICipher& cipher
 );
 
-} 
+}
+ 

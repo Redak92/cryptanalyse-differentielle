@@ -16,6 +16,7 @@ include_directories(src)
 # Librairie principale
 add_library(crypto_core
         src/utils/BitUtils.cpp
+        src/utils/DDTExport.cpp
         src/analysis/DifferentialSearch.cpp
         src/analysis/naive_analysis.cpp
         src/ciphers/CustomFeistel/CustomFeistel.cpp

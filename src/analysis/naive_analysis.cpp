@@ -1,4 +1,6 @@
 #include "naive_analysis.h"
+#include "../utils/BitUtils.h"
+#include "../utils/DDTExport.h"
 #include <algorithm>
 #include <iostream>
 #include <fstream>
@@ -119,27 +121,12 @@ uint64_t DifferentialDistributionTable::table_dimension() const
 
 
 
-Block xor_blocks(Block a, Block b)
-{
-    return a ^ b;
-}
-
-Block make_pair_second(Block x, Block delta)
-{
-    return x ^ delta;
-}
-
 std::pair<Block, Block> compute_cipher_pair(
     const ICipher& cipher,
     Block x,
     Block delta_in)
 {
     return std::make_pair(cipher.encrypt(x), cipher.encrypt(x ^ delta_in));
-}
-
-Block compute_output_difference(Block c1, Block c2)
-{
-    return c1 ^ c2;
 }
 
 
@@ -206,37 +193,10 @@ std::vector<DifferentialPair> find_global_best_differentials_top_n(
 
 
 
-
-uint64_t number_of_blocks(uint32_t n_bits)
-{
-    return 1ULL << n_bits;
-}
-
-bool next_block(Block& value, uint32_t n_bits)
-{
-    uint64_t max_val = (1ULL << n_bits);
-    if (value + 1 >= max_val)
-    {
-        value = 0;
-        return false;
-    }
-    value++;
-    return true;
-}
-
-Prob compute_probability(Count count, uint64_t total)
-{
-    return (total == 0) ? 0.0 : static_cast<Prob>(count) / static_cast<Prob>(total);
-}
-
 void compute_all_probabilities(DifferentialDistributionTable& ddt)
 {
     ddt.normalize(ddt.table_dimension());
 }
-
-
-
-
 
 void print_ddt_summary(const DifferentialDistributionTable& ddt)
 {
@@ -248,32 +208,6 @@ void print_ddt_summary(const DifferentialDistributionTable& ddt)
     std::cout << "  Probability = " << best.probability << "\n";
 }
 
-void export_ddt_to_csv(const DifferentialDistributionTable& ddt,
-                       const std::string& filename)
-{
-    std::ofstream file(filename);
-    if (!file.is_open())
-    {
-        std::cerr << "Error: could not open " << filename << "\n";
-        return;
-    }
-
-    file << "delta_in,delta_out,count,probability\n";
-    uint64_t dim = ddt.table_dimension();
-    for (uint64_t dx = 0; dx < dim; ++dx)
-    {
-        for (uint64_t dy = 0; dy < dim; ++dy)
-        {
-            Count cnt = ddt.get_count(dx, dy);
-            if (cnt > 0)
-            {
-                file << dx << "," << dy << "," << cnt << "," 
-                     << ddt.get_probability(dx, dy) << "\n";
-            }
-        }
-    }
-    file.close();
-}
 
 
 
@@ -289,4 +223,5 @@ DifferentialPair run_exhaustive_differential_analysis(
     return find_global_best_differential(ddt);
 }
 
-} 
+}
+ 

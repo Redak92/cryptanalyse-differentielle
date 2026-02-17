@@ -2,78 +2,92 @@
 
 ## Project Overview
 
-C++17 framework for differential cryptanalysis research on toy block ciphers. Educational TER project focusing on finding input/output differential pairs with exploitable probabilities.
+C++17 framework for differential cryptanalysis research on toy block ciphers (TER project). Finds input/output differential pairs (α, β) with exploitable probabilities through exhaustive DDT computation and optimization algorithms.
 
-## Architecture
+## Architecture & Data Flow
 
 ```
-ICipher (interface)          Analysis Engine
-    │                             │
-    ├── ToySPN (16-bit SPN)       ├── DifferentialSearch (3 algorithms)
-    ├── CustomFeistel (12-bit)    └── naive_analysis (DDT exhaustive)
-    └── Speck (32-bit ARX)
+ICipher (interface)                Analysis Pipeline
+    │                                   │
+    ├── CustomFeistel (12-bit)     ├── DifferentialDistributionTable
+    ├── Speck (32-bit ARX)         │   └── compute_full_ddt_exhaustive()
+    └── ToySPN (16-bit SPN)        ├── DifferentialSearch (3 algorithms)
+                                   └── naive_analysis (helper functions)
 ```
 
-**Data flow**: Apps (`apps/`) instantiate a cipher → inject into analysis class → run differential search → output best (α, β, probability) tuples.
+**Workflow**: Cipher instance → passed to analysis class → exhaustive/sampling search → yields best differentials as `DifferentialPair` struct (α, β, probability).
 
 ## Adding a New Cipher
 
-1. Create folder under `src/ciphers/<CipherName>/` with `.h`, `.cpp`, and `README.md` (must include architecture diagram)
-2. Implement `ICipher` interface (`src/interfaces/ICipher.h`):
+1. Create `src/ciphers/<Name>/` with `<Name>.h`, `.cpp`, `README.md` (include architecture diagram)
+2. Inherit `ICipher`, implement:
    ```cpp
    Block encrypt(Block plaintext) const override;
    Block decrypt(Block ciphertext) const override;
-   int getBlockSize() const override;  // Returns bit size (12, 16, 32, etc.)
+   int getBlockSize() const override;  // Return bit size (not bytes)
    ```
-3. Register in `CMakeLists.txt` under `crypto_core` library
-4. Use types from `src/utils/Types.h`: `Block`, `Key`, `Difference` (all `uint64_t`)
+3. Register `.cpp` in `CMakeLists.txt` `crypto_core` library source list
+4. Use `src/utils/Types.h` types: `Block`, `Key`, `Difference` (all `uint64_t`)
+5. Example: `src/ciphers/CustomFeistel/CustomFeistel.h` (see `NUM_FEISTEL_ROUNDS` config, S-box as `static constexpr`)
 
-## Analysis Algorithms
+## Analysis Classes
 
-Located in `src/analysis/`:
+**`DifferentialDistributionTable`** (`src/analysis/naive_analysis.h`):
+- Stores 2D array of probabilities for all (Δx, Δy) pairs
+- `compute_full_ddt_exhaustive()`: O(2^2n) — tests all plaintexts, exhausts all input differences
+- `find_best_non_trivial()`: Returns single best (α, β, prob) excluding trivial (0→0)
+- `find_best_non_trivial_top_n(n)`: Returns top N differentials ranked by probability
 
-| Class | Method | Complexity | Use Case |
-|-------|--------|------------|----------|
-| `DifferentialSearch` | `runBruteForceSearch()` | O(2^2n) | Only n ≤ 16 |
-| `DifferentialSearch` | `runStandardSearch(k)` | O(2^n × k) | Random sampling |
-| `DifferentialDistributionTable` | `compute_full_ddt_exhaustive()` | O(2^2n) | Full DDT |
-
-**Key pattern**: Analysis classes take `const ICipher&` via constructor injection.
+**`DifferentialSearch`** (`src/analysis/DifferentialSearch.h`):
+- Takes `const ICipher&` in constructor (dependency injection pattern)
+- `runBruteForceSearch()`: O(2^2n), test all plaintext pairs — only viable n ≤ 16
+- `runStandardSearch(k)`: O(2^n × k), sample k pairs per input difference
+- `runFundamentalAlgorithm(samples)`: Advanced collision-based method
 
 ## Build & Run
 
 ```bash
-mkdir build && cd build
-cmake .. && make
-./differential_analysis   # Main exhaustive analysis on CustomFeistel
-./demo_spn                # ToySPN demo
-./demo_speck              # Speck demo
+cd /home/trash/workflow/cryptanalyse-differentielle
+mkdir -p build && cd build
+cmake .. && make -j4
+
+# Only fully implemented executable:
+./differential_analysis    # CustomFeistel exhaustive analysis (12-bit, configurable rounds)
+
+# Note: demo_spn, demo_speck are stubs (empty main) — extend for testing new ciphers
 ```
 
 ## Project Conventions
 
-- **Namespaces**: Feistel uses `diffcrypto::`, others use global (inconsistent—follow existing file patterns)
-- **Round configuration**: Modify `NUM_FEISTEL_ROUNDS` constant in cipher headers, not hardcoded
-- **S-boxes**: Define as `static constexpr` arrays in class definition (see `CustomFeistel.h`)
-- **Include paths**: Use relative from `src/` (e.g., `#include "interfaces/ICipher.h"`)
-- **Cipher interface**: All ciphers MUST implement `getBlockSize()` returning bit count (not bytes)
+- **Namespaces**: `diffcrypto::` used in Feistel & naive_analysis; global scope for others (inconsistent—preserve existing style)
+- **Configuration**: Set `NUM_FEISTEL_ROUNDS` in cipher `.h` header, NOT hardcoded in methods
+- **S-boxes**: Define as `static constexpr std::array<uint8_t, SIZE>` at class scope (see `CustomFeistel.h`)
+- **Includes**: Relative from `src/` dir (e.g., `#include "interfaces/ICipher.h"`)
+- **DDT Access**: Use `DifferentialDistributionTable::get_probability(Δx, Δy)` — handles 2D→1D indexing
 
-## Critical Files
+## Critical Files for Reference
 
-- `src/analysis/naive_analysis.h` — `DifferentialDistributionTable` class and exhaustive DDT computation
-- `src/analysis/DifferentialSearch.h` — Analysis algorithms using `const ICipher&` dependency injection
-- `apps/main_differential.cpp` — Reference for running full analysis pipeline
-- `src/ciphers/CustomFeistel/CustomFeistel.h` — Well-documented Feistel implementation example
+| File | Purpose |
+|------|---------|
+| `src/interfaces/ICipher.h` | Abstract cipher base; all ciphers inherit here |
+| `src/analysis/naive_analysis.h` | `DifferentialDistributionTable` class, exhaustive DDT engine |
+| `src/analysis/DifferentialSearch.h` | Three search algorithms; use injection pattern |
+| `src/ciphers/CustomFeistel/CustomFeistel.h` | Reference cipher: S-box, key schedule, round structure |
+| `apps/main_differential.cpp` | Example: instantiate cipher → DDT compute → find top-N → output |
+| `src/utils/Types.h` | Type aliases: `Block`, `Key`, `Difference` |
+
 ## Testing & Validation
 
-Since no test suite exists, validate changes by:
-1. Rebuilding: `cd build && cmake .. && make`
-2. Running relevant demo: `./demo_spn`, `./demo_speck`, or `./differential_analysis`
-3. Comparing output to previous runs (look for consistent differential candidates)
+No formal test suite. Validate via:
+1. **Rebuild**: `cd build && cmake .. && make`
+2. **Run** `differential_analysis` — should output best non-trivial differential with bias ≠ 0
+3. **Compare** outputs across cipher config changes (e.g., `NUM_FEISTEL_ROUNDS`) — verify differentials remain consistent
+4. **For new ciphers**: Stub main in `apps/demo_<name>.cpp`, run to verify no build errors
 
-## Known Limitations
+## Known Limitations & Inconsistencies
 
-- `ToySPN.cpp` is commented out in CMakeLists.txt (incomplete implementation)
-- Block size limited to 64 bits (`uint64_t`) — impacts max cipher block size
-- Namespace inconsistency between `diffcrypto::` (Feistel/naive_analysis) and global namespace (others)
-- No test suite exists—validate manually via demo executables
+- `ToySPN`, `demo_spn.cpp`, `demo_feistel.cpp` incomplete (commented in CMakeLists, empty stubs)
+- Block size capped at 64 bits (`uint64_t`) — max cipher block size
+- Namespace inconsistency (`diffcrypto::` vs global) — unresolved, follow local file pattern
+- DDT complexity O(2^2n) infeasible for n > 20; use sampling algorithms for larger ciphers
+- No differential cache/memoization — each analysis recomputes full DDT
