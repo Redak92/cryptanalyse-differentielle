@@ -22,6 +22,7 @@ add_library(crypto_core
         src/ciphers/CustomFeistel/CustomFeistel.cpp
         # src/ciphers/ToySPN/ToySPN.cpp
         src/ciphers/Speck/Speck.cpp
+        src/ciphers/One-Time-Pad/otp.cpp
 )
 
 # Exécutables
@@ -33,3 +34,6 @@ target_link_libraries(differential_analysis crypto_core)
 
 add_executable(demo_speck apps/demo_speck.cpp)
 target_link_libraries(demo_speck crypto_core)
+
+add_executable(demo_otp apps/main_otp.cpp)
+target_link_libraries(demo_otp crypto_core)

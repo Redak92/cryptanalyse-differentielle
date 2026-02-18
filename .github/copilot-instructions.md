@@ -11,8 +11,8 @@ ICipher (interface)                Analysis Pipeline
     │                                   │
     ├── CustomFeistel (12-bit)     ├── DifferentialDistributionTable
     ├── Speck (32-bit ARX)         │   └── compute_full_ddt_exhaustive()
-    └── ToySPN (16-bit SPN)        ├── DifferentialSearch (3 algorithms)
-                                   └── naive_analysis (helper functions)
+    ├── ToySPN (16-bit SPN)        ├── DifferentialSearch (3 algorithms)
+    └── OTP (12-bit, trivial)      └── naive_analysis (helper functions)
 ```
 
 **Workflow**: Cipher instance → passed to analysis class → exhaustive/sampling search → yields best differentials as `DifferentialPair` struct (α, β, probability).
@@ -28,7 +28,8 @@ ICipher (interface)                Analysis Pipeline
    ```
 3. Register `.cpp` in `CMakeLists.txt` `crypto_core` library source list
 4. Use `src/utils/Types.h` types: `Block`, `Key`, `Difference` (all `uint64_t`)
-5. Example: `src/ciphers/CustomFeistel/CustomFeistel.h` (see `NUM_FEISTEL_ROUNDS` config, S-box as `static constexpr`)
+5. **Bit masking**: Always mask final output to block size: `return (result & ((1ULL << BLOCK_BITS) - 1));`
+6. Example: `src/ciphers/CustomFeistel/CustomFeistel.h` (see `NUM_FEISTEL_ROUNDS` config, S-box as `static constexpr`)
 
 ## Analysis Classes
 
@@ -46,16 +47,25 @@ ICipher (interface)                Analysis Pipeline
 
 ## Build & Run
 
+```powershell
+# Windows (Visual Studio):
+cd cryptanalyse-differentielle
+mkdir build; cd build
+cmake ..
+cmake --build . --config Release
+
+# Run:
+.\Release\differential_analysis.exe
+```
+
 ```bash
-cd /home/trash/workflow/cryptanalyse-differentielle
+# Linux/macOS:
 mkdir -p build && cd build
 cmake .. && make -j4
-
-# Only fully implemented executable:
-./differential_analysis    # CustomFeistel exhaustive analysis (12-bit, configurable rounds)
-
-# Note: demo_spn, demo_speck are stubs (empty main) — extend for testing new ciphers
+./differential_analysis
 ```
+
+**Executables**: `differential_analysis` (CustomFeistel, fully working), `demo_spn`/`demo_speck` (stubs)
 
 ## Project Conventions
 
@@ -79,14 +89,14 @@ cmake .. && make -j4
 ## Testing & Validation
 
 No formal test suite. Validate via:
-1. **Rebuild**: `cd build && cmake .. && make`
+1. **Rebuild**: `cmake --build . --config Release` (Windows) or `make` (Linux)
 2. **Run** `differential_analysis` — should output best non-trivial differential with bias ≠ 0
 3. **Compare** outputs across cipher config changes (e.g., `NUM_FEISTEL_ROUNDS`) — verify differentials remain consistent
 4. **For new ciphers**: Stub main in `apps/demo_<name>.cpp`, run to verify no build errors
 
 ## Known Limitations & Inconsistencies
 
-- `ToySPN`, `demo_spn.cpp`, `demo_feistel.cpp` incomplete (commented in CMakeLists, empty stubs)
+- `ToySPN` (commented in CMakeLists), `OTP` (not registered), `demo_spn.cpp`/`demo_feistel.cpp` incomplete stubs
 - Block size capped at 64 bits (`uint64_t`) — max cipher block size
 - Namespace inconsistency (`diffcrypto::` vs global) — unresolved, follow local file pattern
 - DDT complexity O(2^2n) infeasible for n > 20; use sampling algorithms for larger ciphers
