@@ -6,21 +6,20 @@
 #include <random>
 #include <unordered_map>
 #include <cmath>
-#include <iostream>
 
 // Constructeur
-DifferentialSearch::DifferentialSearch(const ICipher& targetCipher) : cipher(targetCipher) {
-    int N_BITS = cipher.getBlockSize() ;
-    P_VALUE = pow(2,-(N_BITS/2)) ;
-    SAMPLE_SIZE = sqrt(N_BITS) * pow(2,N_BITS/2) * (1/P_VALUE) ;
+DifferentialSearch::DifferentialSearch(const ICipher &targetCipher) : cipher(targetCipher) {
 }
 
-[[nodiscard]] std::vector<DifferentialCandidate> DifferentialSearch::runStandardSearch(const uint64_t pairsPerDifference) const {
+[[nodiscard]] std::vector<DifferentialCandidate> DifferentialSearch::runStandardSearch(
+    const double probabilityThreshold) const {
     std::vector<DifferentialCandidate> results;
 
     // 1. Taille de l'espace (2^n)
     const int n = cipher.getBlockSize();
     const uint64_t limit = 1ULL << n;
+
+    const auto pairsPerDifference = static_cast<uint64_t>(4.0 / probabilityThreshold);
 
     // Générateur aléatoire
     std::random_device rd;
@@ -30,7 +29,7 @@ DifferentialSearch::DifferentialSearch(const ICipher& targetCipher) : cipher(tar
 
     // 2. On boucle sur toutes les différences possibles (alpha)
     for (uint64_t i = 1; i < limit; ++i) {
-        const auto alpha = static_cast<Difference>(i);
+        const auto alpha = i;
 
         // Table pour compter les sorties beta pour cet alpha
         std::unordered_map<Difference, int> betaCounts;
@@ -51,7 +50,7 @@ DifferentialSearch::DifferentialSearch(const ICipher& targetCipher) : cipher(tar
         }
 
         // --- PHASE DE FILTRAGE ---
-        for (const auto& [beta, count] : betaCounts) {
+        for (const auto &[beta, count]: betaCounts) {
             // CRITÈRE DE FILTRAGE : Count > 1
             // Comme démontré dans le rapport, cela élimine le bruit (loi de Poisson).
             if (count > 1) {
@@ -68,81 +67,80 @@ DifferentialSearch::DifferentialSearch(const ICipher& targetCipher) : cipher(tar
     return results;
 }
 
-[[nodiscard]] std::vector<DifferentialCandidate> DifferentialSearch::runFundamentalAlgorithm(uint64_t numSamples) const{
+[[nodiscard]] std::vector<DifferentialCandidate> DifferentialSearch::runFundamentalAlgorithm(
+    const double probabilityThreshold) const {
+    const int n = cipher.getBlockSize();
+    const auto M = static_cast<uint64_t>(sqrt(n) * pow(2, n / 2.0) / probabilityThreshold);
+    const uint64_t mask = (n < 64) ? (1ULL << n) - 1 : 0xFFFFFFFFFFFFFFFF;
 
-    // size of the block 
-    const uint64_t N_BITS = cipher.getBlockSize() ;
-    // bitshift mask
-    uint64_t mask = (1ULL << N_BITS) - 1;
+    std::unordered_map<Block, std::vector<Block> > hashmap;
 
-    // (g(x),x) hashmap used to detect collisions between values  
-    std::unordered_map<uint32_t,std::vector<uint32_t>> hashmap ;
-    // ( concatenation( alpha , beta )  , count ) hashmap   
-    std::unordered_map<uint32_t,uint32_t> counters ;
-    // results 
-    std::vector<DifferentialCandidate> differentials ;
+    struct Pair {
+        Block a, b;
+        bool operator==(const Pair &o) const { return a == o.a && b == o.b; }
+    };
+    struct PairHash {
+        size_t operator()(const Pair &p) const { return p.a ^ (p.b << 1); }
+    };
+    std::unordered_map<Pair, uint32_t, PairHash> counters;
 
-    // Random number generator
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_int_distribution<uint64_t> dis(0,pow(2,N_BITS));
+    std::uniform_int_distribution<uint64_t> dis(0, mask);
 
-    // Selecting a difference gamma 
-    Block gamma = dis(gen) ;
+    Block gamma = dis(gen);
+    if (gamma == 0) gamma = 1;
 
-    /* ----------------------- Detection phase ----------------------- */  
+    /* ----------------------- Detection phase ----------------------- */
 
-    for( int i = 0 ; i < SAMPLE_SIZE; i++){
-        // generate SAMPLE_SIZE unique samples 
-        Block x = dis(gen) ;  
+    for (uint64_t i = 0; i < M; ++i) {
+        const Block x = dis(gen);
+        const Block hashkey = computeDerivative(x, gamma);
+        auto &list = hashmap[hashkey];
 
-        Block hashkey = computeDerivative(x,gamma) ;
-        // Add x in the hash map based on the value of g(x) 
-        hashmap[hashkey].push_back(x);
-        // If there's more than one element we have a collision 
-        if (hashmap[hashkey].size() > 1 ){
-            for(int j = 0 ; j < hashmap[hashkey].size()-1 ; j++){
-                // Determining alpha and beta and incrementing their counter 
-                Block alpha = x ^ hashmap[hashkey][j] ;
-                Block beta  = cipher.encrypt(x) ^ cipher.encrypt(hashmap[hashkey][j]) ;
-                
-                // Determining index based on alpha and beta 
-                size_t index = static_cast<size_t>(((alpha & mask) << N_BITS) | (beta & mask));
-                
-                counters[index]++ ;
+        if (!list.empty()) {
+            for (const Block prev_x: list) {
+                const Block alpha = x ^ prev_x;
+                if (alpha == 0) continue;
+
+                const Block beta = cipher.encrypt(x) ^ cipher.encrypt(prev_x);
+
+                counters[{alpha, beta}]++;
             }
-        };
+        }
+        list.push_back(x);
     }
 
-    /* ----------------------- Verification phase ----------------------- */  
-    
-    for(auto const& [k,v] : counters){
-        
-        // If count surpasses an n/4 threshold
-        if( v >= N_BITS/4){
-            int count = 0 ;
-            // Extract alpha and beta from the index 
-            Block alpha  = (k >> N_BITS) ;
-            Block beta = k & mask ;
-            
-            // Check the differences against the new dataset
-            for(int i = 0 ; i < N_BITS/P_VALUE ; i++){
-                Block x = dis(gen) ;
-                if(computeDerivative(x,alpha) == beta)
-                    count++ ;
+    /* ----------------------- Verification phase ----------------------- */
+
+    std::vector<DifferentialCandidate> results;
+    const auto N_verify = static_cast<uint64_t>(n / probabilityThreshold);
+
+    for (auto const &[pair, count]: counters) {
+        if (count >= static_cast<uint32_t>(n / 4)) {
+            uint64_t verify_hits = 0;
+
+            for (uint64_t i = 0; i < N_verify; ++i) {
+                if (const Block x = dis(gen); (cipher.encrypt(x) ^ cipher.encrypt(x ^ pair.a)) == pair.b) {
+                    verify_hits++;
+                }
             }
-                
-            // If the new counter surpasses an n/2 threshold
-            if(count > N_BITS/2){
-                DifferentialCandidate differential{ .alpha = alpha, .beta = beta, .probability = count/(N_BITS/P_VALUE) } ;
-                differentials.push_back(differential) ;
+
+            if (verify_hits > static_cast<uint64_t>(n / 2)) {
+                const double final_probability = static_cast<double>(verify_hits) / static_cast<double>(N_verify);
+
+                results.push_back({
+                    pair.a,
+                    pair.b,
+                    final_probability
+                });
             }
         }
     }
 
-    return differentials ;
+    return results;
 }
 
-Block DifferentialSearch::computeDerivative(Block x, Difference gamma) const{
-    return cipher.encrypt(x) ^ cipher.encrypt(x ^ gamma) ;
+Block DifferentialSearch::computeDerivative(const Block x, const Difference gamma) const {
+    return cipher.encrypt(x) ^ cipher.encrypt(x ^ gamma);
 }

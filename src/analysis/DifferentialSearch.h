@@ -34,18 +34,15 @@ public:
     // --- ALGO 2 : NAÏF OPTIMISÉ ---
     // Complexité : O(2^n * p^-1).
     // Pour chaque différence d'entrée alpha possible, on teste k paires.
-    [[nodiscard]] std::vector<DifferentialCandidate> runStandardSearch(uint64_t pairsPerDifference) const;
+    [[nodiscard]] std::vector<DifferentialCandidate> runStandardSearch(double probabilityThreshold) const;
 
     // --- ALGO 3 : FONDAMENTAL ---
     // Complexité : O(2^{n/2} * p^-1).
     // Utilise la méthode Surrogate et les collisions.
-    [[nodiscard]] std::vector<DifferentialCandidate> runFundamentalAlgorithm(uint64_t numSamples) const;
+    [[nodiscard]] std::vector<DifferentialCandidate> runFundamentalAlgorithm(double probabilityThreshold) const;
 
     // La fonction g_gamma (Section 2.2)
-    Block computeDerivative(Block x, Difference gamma) const ;
-
-    double P_VALUE ; 
-    double SAMPLE_SIZE ;      
+    [[nodiscard]] Block computeDerivative(Block x, Difference gamma) const ;
 };
 
 
