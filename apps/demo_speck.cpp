@@ -16,7 +16,7 @@ int main() {
 
     const Speck speck(0x1918111009080100, test_rounds);
     const DifferentialSearch search(speck);
-    std::vector<DifferentialCandidate> results = search.runFundamentalAlgorithm(target_probability);
+    const std::vector<DifferentialCandidate> results = search.runFundamentalAlgorithm(target_probability);
 
     std::cout << "Resultats : " << results.size() << " trouves." << std::endl;
 
