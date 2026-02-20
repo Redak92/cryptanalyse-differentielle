@@ -1,24 +1,20 @@
 //
 // Created by alexandre on 30/01/2026.
 //
-#include <vector>
-
 #include "ToySPN.h"
 
 using namespace std ;
 
-ToySPN::ToySPN(Key init_key,int init_rounds_number) : key(init_key), rounds_number(init_rounds_number) {}
+ToySPN::ToySPN(Key init_key,int init_rounds_number) : 
+    key(init_key), rounds_number(init_rounds_number), round_keys(key_schedule(ToySPN::key,rounds_number)) {}
 
 Block ToySPN::encrypt(Block message) const {
 
     Block result = message ;
-    // Génération des round keys 
-    int rounds_nb = ToySPN::rounds_number ;
-    vector<Block> keys = key_schedule(ToySPN::key,rounds_nb) ;
 
-    for(int i = 0 ; i < rounds_nb-1; i++){
+    for(int i = 0 ; i < ToySPN::rounds_number-1; i++){
         // XOR avec la clé du round actuel 
-        result = result ^ keys.at(i) ;
+        result = result ^ ToySPN::round_keys.at(i) ;
         
         // Division du block en deux 
         uint8_t left = result >> 8 ;
@@ -37,19 +33,16 @@ Block ToySPN::encrypt(Block message) const {
     }
 
     // Dernier XOR  
-    return result ^ keys.at(rounds_nb-1) ;
+    return result ^ ToySPN::round_keys.at(ToySPN::rounds_number-1) ;
 }
 
 Block ToySPN::decrypt(Block message) const {
 
     Block result = message ;
-    // Génération des round keys 
-    int rounds_nb = ToySPN::rounds_number ;
-    vector<Block> keys = key_schedule(ToySPN::key,rounds_nb) ;
 
-    for(int i = rounds_nb-1 ; i > 0 ; i--){
+    for(int i = ToySPN::rounds_number-1 ; i > 0 ; i--){
         // XOR avec la clé du round actuel 
-        result = result ^ keys.at(i) ;
+        result = result ^ ToySPN::round_keys.at(i) ;
         
         // Permutation par la PBOX
         result = inv_permutate(result) ;
@@ -68,7 +61,7 @@ Block ToySPN::decrypt(Block message) const {
     }
 
     // Dernier XOR  
-    return result ^ keys.at(0) ;
+    return result ^ ToySPN::round_keys.at(0) ;
 }
 
 int ToySPN::getBlockSize() const {

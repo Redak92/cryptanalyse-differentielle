@@ -7,6 +7,7 @@
 
 #include "../interfaces/ICipher.h"
 #include "../ciphers/CustomFeistel/CustomFeistel.h"
+#include "../ciphers/ToySPN/ToySPN.h"
 #include <vector>
 #include <map>
 
@@ -21,6 +22,7 @@ class DifferentialSearch {
     const ICipher &cipher; // Référence vers n'importe quel cipher (Speck ou Toy)
 
 public:
+
     // On injecte le cipher à la construction
     explicit DifferentialSearch(const ICipher& targetCipher);
 
@@ -37,10 +39,13 @@ public:
     // --- ALGO 3 : FONDAMENTAL ---
     // Complexité : O(2^{n/2} * p^-1).
     // Utilise la méthode Surrogate et les collisions.
-    std::vector<DifferentialCandidate> runFundamentalAlgorithm(uint64_t numSamples);
+    [[nodiscard]] std::vector<DifferentialCandidate> runFundamentalAlgorithm(uint64_t numSamples) const;
 
     // La fonction g_gamma (Section 2.2)
-    Block computeDerivative(Block x, Difference gamma);
+    Block computeDerivative(Block x, Difference gamma) const ;
+
+    double P_VALUE ; 
+    double SAMPLE_SIZE ;      
 };
 
 

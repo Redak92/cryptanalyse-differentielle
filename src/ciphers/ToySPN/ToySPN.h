@@ -1,6 +1,7 @@
 //
 // Created by alexandre on 30/01/2026.
 //
+#include <vector>
 #include "../../utils/Types.h"
 #include "../../interfaces/ICipher.h"
 
@@ -33,6 +34,7 @@ class ToySPN : public ICipher{
         constexpr static uint32_t PBOX_SIZE = 16 ;        
         
         uint32_t rounds_number ;
+        std::vector<Block> round_keys ;
         Key key ;    
         
         // AES's 8bit Sbox, initialised with the initialize_aes_sbox function from the Rijndael S-box wikipedia page
