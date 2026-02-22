@@ -55,6 +55,14 @@ Count DifferentialDistributionTable::get_count(Block delta_in, Block delta_out) 
     return counts[index(delta_in, delta_out)];
 }
 
+void DifferentialDistributionTable::setCounts(const uint64_t* data, size_t size)
+{
+    if (size <= counts.size())
+    {
+        std::copy(data, data + size, counts.begin());
+    }
+}
+
 DifferentialPair DifferentialDistributionTable::find_best_non_trivial() const
 {
     DifferentialPair best = {0, 0, 0.0};
@@ -196,16 +204,6 @@ std::vector<DifferentialPair> find_global_best_differentials_top_n(
 void compute_all_probabilities(DifferentialDistributionTable& ddt)
 {
     ddt.normalize(ddt.table_dimension());
-}
-
-void print_ddt_summary(const DifferentialDistributionTable& ddt)
-{
-    DifferentialPair best = ddt.find_best_non_trivial();
-    std::cout << "DDT Summary (Block size: " << ddt.block_bits() << " bits)\n";
-    std::cout << "Best non-trivial differential:\n";
-    std::cout << "  ΔX = 0x" << std::hex << best.delta_in << std::dec << "\n";
-    std::cout << "  ΔY = 0x" << std::hex << best.delta_out << std::dec << "\n";
-    std::cout << "  Probability = " << best.probability << "\n";
 }
 
 

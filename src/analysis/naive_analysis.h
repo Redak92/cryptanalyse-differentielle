@@ -9,8 +9,6 @@
 
 namespace diffcrypto
 {
-
-// Block est déjà défini dans Types.h (inclus via ICipher.h)
 using Count  = uint64_t;
 using Prob   = double;
 
@@ -43,6 +41,11 @@ public:
 
     uint32_t block_bits() const;
     uint64_t table_dimension() const;
+
+    // CUDA
+    void setCounts(const uint64_t* data, size_t size);
+    uint64_t* getCountsPtr() { return counts.data(); }
+    const uint64_t* getCountsPtr() const { return counts.data(); }
 
 private:
     uint32_t n;
@@ -91,7 +94,6 @@ std::vector<DifferentialPair> find_global_best_differentials_top_n(
 );
 
 void compute_all_probabilities(DifferentialDistributionTable& ddt);
-void print_ddt_summary(const DifferentialDistributionTable& ddt);
 
 DifferentialPair run_exhaustive_differential_analysis(
     const ICipher& cipher

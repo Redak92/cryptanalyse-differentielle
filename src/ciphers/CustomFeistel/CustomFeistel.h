@@ -33,6 +33,12 @@ public:
     Block decrypt(Block ciphertext) const override;
     int getBlockSize() const override;
 
+    // CUDA support: expose cipher parameters
+    const uint8_t* getRoundKeys() const { return round_keys.data(); }
+    static const uint8_t* getSBox() { return SBOX6; }
+    static constexpr uint32_t getNumRounds() { return NUM_FEISTEL_ROUNDS; }
+    static constexpr uint32_t getBlockBits() { return BLOCK_BITS; }
+
 private:
     static constexpr uint32_t BLOCK_BITS = 12;
     static constexpr uint32_t HALF_BITS = 6;

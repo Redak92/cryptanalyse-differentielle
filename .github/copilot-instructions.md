@@ -48,8 +48,7 @@ ICipher (interface)                Analysis Pipeline
 ## Build & Run
 
 ```powershell
-# Windows (Visual Studio):
-cd cryptanalyse-differentielle
+# Windows (Visual Studio):h
 mkdir build; cd build
 cmake ..
 cmake --build . --config Release
