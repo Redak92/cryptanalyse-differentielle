@@ -157,7 +157,8 @@ void process_fixed_input_difference(
     DifferentialDistributionTable& ddt)
 {
     uint64_t block_count = ddt.table_dimension();
-    for (uint64_t x = 0; x < block_count; ++x)
+    uint64_t limit = (MAX_ITERATIONS > 0 && MAX_ITERATIONS < block_count) ? MAX_ITERATIONS : block_count;
+    for (uint64_t x = 0; x < limit; ++x)
     {
         process_single_pair(cipher, x, delta_in, ddt);
     }
@@ -168,7 +169,8 @@ void compute_full_ddt_exhaustive(
     DifferentialDistributionTable& ddt)
 {
     uint64_t block_count = ddt.table_dimension();
-    for (uint64_t delta_in = 1; delta_in < block_count; ++delta_in)
+    uint64_t limit = (MAX_ITERATIONS > 0 && MAX_ITERATIONS < block_count) ? MAX_ITERATIONS : block_count;
+    for (uint64_t delta_in = 1; delta_in < limit; ++delta_in)
     {
         process_fixed_input_difference(cipher, delta_in, ddt);
     }
