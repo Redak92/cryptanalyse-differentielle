@@ -2,13 +2,13 @@
 // Created by alexandre on 30/01/2026.
 //
 
-#include "ToySPN.h"
+#include "SPN.h"
 
-ToySPN::ToySPN(const Key master_key, const int rounds) : master_key(master_key), num_rounds(rounds) {
+SPN::SPN(const Key master_key, const int rounds) : master_key(master_key), num_rounds(rounds) {
     scheduleKeys();
 }
 
-void ToySPN::scheduleKeys() {
+void SPN::scheduleKeys() {
     round_keys.resize(num_rounds);
     Block buffer = master_key;
 
@@ -19,15 +19,15 @@ void ToySPN::scheduleKeys() {
     }
 }
 
-uint8_t ToySPN::substitute(const uint8_t message) {
+uint8_t SPN::substitute(const uint8_t message) {
     return SBOX_ARRAY[message];
 }
 
-uint8_t ToySPN::inv_substitute(const uint8_t message) {
+uint8_t SPN::inv_substitute(const uint8_t message) {
     return INVERSE_SBOX_ARRAY[message];
 }
 
-Block ToySPN::permutate(const Block message) {
+Block SPN::permutate(const Block message) {
     Block result = 0;
     for (int i = 15; i >= 0; i--) {
         // masque pour isoler le bit selectionné par l'index
@@ -38,7 +38,7 @@ Block ToySPN::permutate(const Block message) {
     return result;
 }
 
-Block ToySPN::inv_permutate(const Block message) {
+Block SPN::inv_permutate(const Block message) {
     Block result = 0;
     for (int i = 15; i >= 0; i--) {
         // masque pour isoler le bit selectionné par l'index
@@ -50,7 +50,7 @@ Block ToySPN::inv_permutate(const Block message) {
 }
 
 
-Block ToySPN::encrypt(Block plaintext) const {
+Block SPN::encrypt(Block plaintext) const {
     Block result = plaintext;
 
     for (int i = 0; i < num_rounds - 1; i++) {
@@ -74,10 +74,10 @@ Block ToySPN::encrypt(Block plaintext) const {
     }
 
     // Dernier XOR
-    return result ^ round_keys.at(ToySPN::num_rounds - 1);
+    return result ^ round_keys.at(SPN::num_rounds - 1);
 }
 
-Block ToySPN::decrypt(Block ciphertext) const {
+Block SPN::decrypt(Block ciphertext) const {
     Block result = ciphertext;
 
     for (int i = num_rounds - 1; i > 0; i--) {

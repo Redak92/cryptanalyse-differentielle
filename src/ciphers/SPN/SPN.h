@@ -8,7 +8,7 @@
 #include <vector>
 #include <cstdint>
 
-class ToySPN : public ICipher {
+class SPN : public ICipher {
 public :
     /**
      * Constructeur de ToySPN
@@ -18,7 +18,7 @@ public :
      * @param rounds Nombre de tours
      */
 
-    explicit ToySPN(Key master_key, int rounds = 4);
+    explicit SPN(Key master_key, int rounds = 4);
 
     // --- Interface ICipher ---
     [[nodiscard]] Block encrypt(Block plaintext) const override;
