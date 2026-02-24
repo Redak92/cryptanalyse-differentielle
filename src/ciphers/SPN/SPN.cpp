@@ -1,7 +1,6 @@
 //
 // Created by alexandre on 30/01/2026.
 //
-
 #include "SPN.h"
 
 SPN::SPN(const Key master_key, const int rounds) : master_key(master_key), num_rounds(rounds) {
@@ -17,14 +16,6 @@ void SPN::scheduleKeys() {
         round_keys.at(i) = permutate(buffer);
         buffer = round_keys.at(i);
     }
-}
-
-uint8_t SPN::substitute(const uint8_t message) {
-    return SBOX_ARRAY[message];
-}
-
-uint8_t SPN::inv_substitute(const uint8_t message) {
-    return INVERSE_SBOX_ARRAY[message];
 }
 
 Block SPN::permutate(const Block message) {
@@ -50,6 +41,42 @@ Block SPN::inv_permutate(const Block message) {
 }
 
 
+Block SPN::SBOXLayer(Block plaintext, bool inverse, bool reduceSbox) const {
+    Block result = 0 ;
+    // Déchiffrement de la SBOX 
+    if(inverse){
+        if(reduceSbox){
+            for(int i = 4 ; i > 0 ; i--){
+                Block buffer = plaintext >> 4*(i-1) ;    
+                uint16_t var = buffer & 0x000F ; 
+                result = result |( INVERSE_SBOX4_ARRAY[var] << 4*(i-1))  ;            
+            } 
+        } else {
+            for(int i = 2 ; i > 0 ; i--){
+                Block buffer = plaintext >> 8*(i-1) ;    
+                uint16_t var = buffer & 0x00FF ; 
+                result = result |( INVERSE_SBOX8_ARRAY[var] << 8*(i-1))  ;            
+            }
+        }
+    } // Chiffrement de la SBOX 
+    else{
+        if(reduceSbox){
+            for(int i = 4 ; i > 0 ; i--){
+                Block buffer = plaintext >> 4*(i-1) ;    
+                uint16_t var = buffer & 0x000F ; 
+                result = result |( SBOX4_ARRAY[var] << 4*(i-1))  ;            
+            } 
+        } else {
+            for(int i = 2 ; i > 0 ; i--){
+                Block buffer = plaintext >> 8*(i-1) ;    
+                uint16_t var = buffer & 0x00FF ; 
+                result = result | ( SBOX8_ARRAY[var] << 8*(i-1))  ;            
+            }
+        }
+    }
+    return result ;
+}
+
 Block SPN::encrypt(Block plaintext) const {
     Block result = plaintext;
 
@@ -57,17 +84,7 @@ Block SPN::encrypt(Block plaintext) const {
         // XOR avec la clé du round actuel
         result = result ^ round_keys.at(i);
 
-        // Division du block en deux
-        uint8_t left = result >> 8;
-        uint8_t right = result & 0x00FF;
-
-        // Substitution par la SBOX
-        left = substitute(left);
-        right = substitute(right);
-
-        // Reconstruction du block
-        result = left << 8;
-        result = result | right;
+        result = SBOXLayer(result,0,REDUCE_SBOX_SIZE) ;
 
         // Permutation par la PBOX
         result = permutate(result);
@@ -87,17 +104,7 @@ Block SPN::decrypt(Block ciphertext) const {
         // Permutation par la PBOX
         result = inv_permutate(result);
 
-        // Division du block en deux
-        uint8_t left = result >> 8;
-        uint8_t right = result & 0x00FF;
-
-        // Substitution par la SBOX
-        left = inv_substitute(left);
-        right = inv_substitute(right);
-
-        // Reconstruction du block
-        result = left << 8;
-        result = result | right;
+        result = SBOXLayer(result,1,REDUCE_SBOX_SIZE) ;
     }
 
     // Dernier XOR
