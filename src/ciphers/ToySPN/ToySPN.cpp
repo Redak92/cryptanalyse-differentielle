@@ -3,7 +3,6 @@
 //
 
 #include "ToySPN.h"
-#include <vector>
 
 ToySPN::ToySPN(const Key master_key, const int rounds) : master_key(master_key), num_rounds(rounds) {
     scheduleKeys();
