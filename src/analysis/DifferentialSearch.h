@@ -6,10 +6,7 @@
 #define CRYPTANALYSE_DIFFERENTIELLE_DIFFERENTIALSEARCH_H
 
 #include "../interfaces/ICipher.h"
-#include "../ciphers/CustomFeistel/CustomFeistel.h"
-#include "../ciphers/ToySPN/ToySPN.h"
 #include <vector>
-#include <map>
 
 // Structure pour stocker une découverte
 struct DifferentialCandidate {

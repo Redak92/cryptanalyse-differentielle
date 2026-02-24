@@ -36,6 +36,7 @@ add_library(crypto_core
         src/analysis/naive_analysis.cpp
         src/ciphers/CustomFeistel/CustomFeistel.cpp
         src/ciphers/Speck/Speck.cpp
+        src/ciphers/SPN/SPN.cpp
         src/ciphers/One-Time-Pad/otp.cpp
 )
 
