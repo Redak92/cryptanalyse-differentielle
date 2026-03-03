@@ -6,6 +6,7 @@
 #include <random>
 #include <unordered_map>
 #include <cmath>
+#include <omp.h>
 
 // Constructeur
 DifferentialSearch::DifferentialSearch(const ICipher &targetCipher) : cipher(targetCipher) {
@@ -13,58 +14,65 @@ DifferentialSearch::DifferentialSearch(const ICipher &targetCipher) : cipher(tar
 
 [[nodiscard]] std::vector<DifferentialCandidate> DifferentialSearch::runStandardSearch(
     const double probabilityThreshold) const {
-    std::vector<DifferentialCandidate> results;
+    std::vector<DifferentialCandidate> globalResults;
 
     // 1. Taille de l'espace (2^n)
     const int n = cipher.getBlockSize();
     const uint64_t limit = 1ULL << n;
-
     const auto pairsPerDifference = static_cast<uint64_t>(4.0 / probabilityThreshold);
 
-    // Générateur aléatoire
-    std::random_device rd;
-    std::mt19937_64 gen(rd());
-    // Distribution uniforme pour générer des blocs aléatoires
-    std::uniform_int_distribution<uint64_t> dis(0, limit - 1);
+    #pragma omp parallel num_threads(4)
+    {
+        // Générateur aléatoire
+        std::random_device rd;
+        std::mt19937_64 gen(rd() ^ omp_get_thread_num());
+        std::uniform_int_distribution<uint64_t> dis(0, limit - 1);
 
-    // 2. On boucle sur toutes les différences possibles (alpha)
-    for (uint64_t i = 1; i < limit; ++i) {
-        const auto alpha = i;
+        std::vector<DifferentialCandidate> localResults;
 
-        // Table pour compter les sorties beta pour cet alpha
-        std::unordered_map<Difference, int> betaCounts;
+        // 2. On boucle sur toutes les différences possibles (alpha)
+        #pragma omp for schedule(dynamic)
+        for (uint64_t i = 1; i < limit; ++i) {
+            const auto alpha = i;
 
-        // 3. On teste k paires aléatoires
-        for (uint64_t k = 0; k < pairsPerDifference; ++k) {
-            // Générer x et y
-            const auto x = static_cast<Block>(dis(gen));
-            const Block y = x ^ alpha;
+            // Table pour compter les sorties beta pour cet alpha
+            std::unordered_map<Difference, int> betaCounts;
 
-            // Chiffrer
-            const Block c1 = cipher.encrypt(x);
-            const Block c2 = cipher.encrypt(y);
+            for (uint64_t k = 0; k < pairsPerDifference; ++k) {
+                // Générer x et y
+                const auto x = dis(gen);
+                const Block y = x ^ alpha;
 
-            // Calculer la différence de sortie et compter
-            Difference beta = c1 ^ c2;
-            betaCounts[beta]++;
+                // Chiffrer
+                const Block c1 = cipher.encrypt(x);
+                const Block c2 = cipher.encrypt(y);
+
+                // Calculer la différence de sortie et compter
+                betaCounts[c1 ^ c2]++;
+            }
+
+            // 3. PHASE DE FILTRAGE
+            for (const auto &[beta, count] : betaCounts) {
+                // CRITÈRE DE FILTRAGE : Count > 1
+                // Comme démontré dans le rapport, cela élimine le bruit (loi de Poisson).
+                if (count > 1) {
+                    DifferentialCandidate candidate{};
+                    candidate.alpha = alpha;
+                    candidate.beta = beta;
+                    candidate.probability = static_cast<double>(count) / static_cast<double>(pairsPerDifference);
+
+                    localResults.push_back(candidate);
+                }
+            }
         }
 
-        // --- PHASE DE FILTRAGE ---
-        for (const auto &[beta, count]: betaCounts) {
-            // CRITÈRE DE FILTRAGE : Count > 1
-            // Comme démontré dans le rapport, cela élimine le bruit (loi de Poisson).
-            if (count > 1) {
-                DifferentialCandidate candidate{};
-                candidate.alpha = alpha;
-                candidate.beta = beta;
-                candidate.probability = static_cast<double>(count) / static_cast<double>(pairsPerDifference);
-
-                results.push_back(candidate);
-            }
+        #pragma omp critical
+        {
+            globalResults.insert(globalResults.end(), localResults.begin(), localResults.end());
         }
     }
 
-    return results;
+    return globalResults;
 }
 
 [[nodiscard]] std::vector<DifferentialCandidate> DifferentialSearch::runFundamentalAlgorithm(
