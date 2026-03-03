@@ -9,6 +9,10 @@
 
 namespace diffcrypto
 {
+
+// Maximum iterations per differential search loop (0 = no limit, use full block count)
+constexpr uint64_t MAX_ITERATIONS = 0;
+
 using Count  = uint64_t;
 using Prob   = double;
 
