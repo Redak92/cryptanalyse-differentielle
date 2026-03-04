@@ -21,7 +21,7 @@ DifferentialSearch::DifferentialSearch(const ICipher &targetCipher) : cipher(tar
     const uint64_t limit = 1ULL << n;
     const auto pairsPerDifference = static_cast<uint64_t>(4.0 / probabilityThreshold);
 
-    #pragma omp parallel num_threads(4)
+    #pragma omp parallel num_threads(omp_get_max_threads())
     {
         // Générateur aléatoire
         std::random_device rd;
@@ -52,7 +52,7 @@ DifferentialSearch::DifferentialSearch(const ICipher &targetCipher) : cipher(tar
             }
 
             // 3. PHASE DE FILTRAGE
-            for (const auto &[beta, count] : betaCounts) {
+            for (const auto &[beta, count]: betaCounts) {
                 // CRITÈRE DE FILTRAGE : Count > 1
                 // Comme démontré dans le rapport, cela élimine le bruit (loi de Poisson).
                 if (count > 1) {
@@ -66,7 +66,7 @@ DifferentialSearch::DifferentialSearch(const ICipher &targetCipher) : cipher(tar
             }
         }
 
-        #pragma omp critical
+#pragma omp critical
         {
             globalResults.insert(globalResults.end(), localResults.begin(), localResults.end());
         }
