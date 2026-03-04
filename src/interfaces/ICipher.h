@@ -2,10 +2,8 @@
 // Created by alexandre on 30/01/2026.
 //
 
-#ifndef CRYPTANALYSE_DIFFERENTIELLE_ICIPHER_H
-#define CRYPTANALYSE_DIFFERENTIELLE_ICIPHER_H
+#pragma once
 
-#include <cstdint>
 #include "../utils/Types.h"
 
 class ICipher {
@@ -19,6 +17,3 @@ public:
     // Pour savoir si on attaque du 16 bits, 32 bits, etc.
     [[nodiscard]] virtual int getBlockSize() const = 0;
 };
-
-
-#endif //CRYPTANALYSE_DIFFERENTIELLE_ICIPHER_H

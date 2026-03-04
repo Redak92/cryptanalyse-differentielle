@@ -1,7 +1,3 @@
-//
-// Created by alexandre on 30/01/2026.
-//
-
 #include "DifferentialSearch.h"
 #include <random>
 #include <unordered_map>

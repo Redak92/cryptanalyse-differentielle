@@ -1,9 +1,4 @@
-//
-// Created by alexandre on 30/01/2026.
-//
-
-#ifndef CRYPTANALYSE_DIFFERENTIELLE_DIFFERENTIALSEARCH_H
-#define CRYPTANALYSE_DIFFERENTIELLE_DIFFERENTIALSEARCH_H
+#pragma once
 
 #include "../interfaces/ICipher.h"
 #include <vector>
@@ -19,9 +14,8 @@ class DifferentialSearch {
     const ICipher &cipher; // Référence vers n'importe quel cipher (Speck ou Toy)
 
 public:
-
     // On injecte le cipher à la construction
-    explicit DifferentialSearch(const ICipher& targetCipher);
+    explicit DifferentialSearch(const ICipher &targetCipher);
 
     // --- ALGO 1 : NAÏF ABSOLU ---
     // Complexité : O(2^{2n}). Teste toutes les paires (x, y) possibles.
@@ -39,8 +33,5 @@ public:
     [[nodiscard]] std::vector<DifferentialCandidate> runFundamentalAlgorithm(double probabilityThreshold) const;
 
     // La fonction g_gamma (Section 2.2)
-    [[nodiscard]] Block computeDerivative(Block x, Difference gamma) const ;
+    [[nodiscard]] Block computeDerivative(Block x, Difference gamma) const;
 };
-
-
-#endif //CRYPTANALYSE_DIFFERENTIELLE_DIFFERENTIALSEARCH_H

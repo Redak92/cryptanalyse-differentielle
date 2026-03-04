@@ -1,9 +1,4 @@
-//
-// Created by alexandre on 30/01/2026.
-//
-
-#ifndef CRYPTANALYSE_DIFFERENTIELLE_SPECK_H
-#define CRYPTANALYSE_DIFFERENTIELLE_SPECK_H
+#pragma once
 
 #include "interfaces/ICipher.h"
 #include <vector>
@@ -44,5 +39,3 @@ private:
         return (x << r) | (x >> (16 - r));
     }
 };
-
-#endif //CRYPTANALYSE_DIFFERENTIELLE_SPECK_H
