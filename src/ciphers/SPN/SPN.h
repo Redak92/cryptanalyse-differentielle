@@ -1,26 +1,30 @@
-//
-// Created by alexandre on 30/01/2026.
-//
-#ifndef CRYPTANALYSE_DIFFERENTIELLE_TOYSPN_H
-#define CRYPTANALYSE_DIFFERENTIELLE_TOYSPN_H
+#pragma once
 
 #include "../../interfaces/ICipher.h"
 #include <vector>
 #include <cstdint>
 
-constexpr bool REDUCE_SBOX_SIZE = 1 ;   // 1 -> utilise une SBOX de taille 4
-                                        // 0 -> utilise une SBOX de taille 8
+// True : utilise une SBOX de taille 4 sinon 8
+constexpr bool REDUCE_SBOX_SIZE = true;
+
 class SPN : public ICipher {
 public :
     /**
      * Constructeur de SPN
      * Blocs de 16 bits,  Sbox de 8 bits, Pbox de 16 bits
      *
-     * @param master_key Clé de 16 bits
+     * @param master_key Clé initiale
+     * @param sbox Table de substitution
+     * @param inv_sbox Table de substitution inverse
+     * @param chunk_size Taille d'une S-Box
      * @param rounds Nombre de tours
      */
 
-    explicit SPN(Key master_key, int rounds = 4);
+    explicit SPN(Key master_key,
+                 const uint8_t *sbox,
+                 const uint8_t *inv_sbox,
+                 int chunk_size = 4,
+                 int rounds = 4);
 
     // --- Interface ICipher ---
     [[nodiscard]] Block encrypt(Block plaintext) const override;
@@ -29,19 +33,10 @@ public :
 
     [[nodiscard]] int getBlockSize() const override { return 16; }
 
-private :
-    Key master_key;
-    int num_rounds;
-    std::vector<Block> round_keys;
-
-    // Génération des sous-clés
-    void scheduleKeys();
-
     static constexpr uint32_t SBOX8_SIZE = 256;
     static constexpr uint32_t SBOX4_SIZE = 16;
-    static constexpr uint32_t PBOX_SIZE = 16;
 
-    // AES's 8bit Sbox, initialised with the initialize_aes_sbox function from the Rijndael S-box wikipedia page
+    // 8 bits SBOX AES
     constexpr static uint8_t SBOX8_ARRAY[SBOX8_SIZE] = {
         0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
         0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
@@ -79,7 +74,7 @@ private :
         0xa0, 0xe0, 0x3b, 0x4d, 0xae, 0x2a, 0xf5, 0xb0, 0xc8, 0xeb, 0xbb, 0x3c, 0x83, 0x53, 0x99, 0x61,
         0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d
     };
-    
+
     constexpr static uint8_t SBOX4_ARRAY[SBOX4_SIZE] = {
         0x0E, 0x04, 0x0D, 0x01,
         0x02, 0x0F, 0x0B, 0x08,
@@ -93,17 +88,28 @@ private :
         0x07, 0x0D, 0x09, 0x06,
         0x0B, 0x02, 0x00, 0x05
     };
-    
-    // 16 bits Pbox
-    constexpr static uint8_t PBOX_ARRAY[PBOX_SIZE] = {5, 9, 0, 13, 7, 2, 11, 14, 1, 4, 12, 8, 3, 15, 6, 10};
-    constexpr static uint8_t INVERSE_PBOX_ARRAY[PBOX_SIZE] = {2, 8, 5, 12, 9, 0, 14, 4, 11, 1, 15, 6, 10, 3, 7, 13};
+
+private :
+    Key master_key;
+    int num_rounds;
+    int sbox_chunk_size;
+    const uint8_t *sbox_table;
+    const uint8_t *inv_sbox_table;
+    std::vector<Block> round_keys;
+
+    // Génération des sous-clés
+    void scheduleKeys();
 
     // --- Fonctions internes ---
-    Block SBOXLayer(Block plaintext, bool inverse, bool reduceSbox ) const ; 
+    [[nodiscard]] Block applySbox(Block data, const uint8_t *table) const;
 
     static Block permutate(Block message);
 
     static Block inv_permutate(Block message);
-};
 
-#endif //CRYPTANALYSE_DIFFERENTIELLE_TOYSPN_H
+    // 16 bits Pbox
+    static constexpr uint32_t PBOX_SIZE = 16;
+
+    constexpr static uint8_t PBOX_ARRAY[PBOX_SIZE] = {5, 9, 0, 13, 7, 2, 11, 14, 1, 4, 12, 8, 3, 15, 6, 10};
+    constexpr static uint8_t INVERSE_PBOX_ARRAY[PBOX_SIZE] = {2, 8, 5, 12, 9, 0, 14, 4, 11, 1, 15, 6, 10, 3, 7, 13};
+};

@@ -1,18 +1,20 @@
-//
-// Created by alexandre on 30/01/2026.
-//
 #include "SPN.h"
 
-SPN::SPN(const Key master_key, const int rounds) : master_key(master_key), num_rounds(rounds) {
+SPN::SPN(const Key master_key, const uint8_t *sbox, const uint8_t *inv_sbox, int chunk_size, const int rounds)
+    : master_key(master_key),
+      num_rounds(rounds),
+      sbox_chunk_size(chunk_size),
+      sbox_table(sbox),
+      inv_sbox_table(inv_sbox) {
     scheduleKeys();
 }
 
 void SPN::scheduleKeys() {
-    round_keys.resize(num_rounds);
+    round_keys.resize(num_rounds + 1);
     Block buffer = master_key;
 
     // Fait passer la clé rounds_nb fois par la Pbox
-    for (int i = 0; i < num_rounds; i++) {
+    for (int i = 0; i < num_rounds + 1; i++) {
         round_keys.at(i) = permutate(buffer);
         buffer = round_keys.at(i);
     }
@@ -40,73 +42,43 @@ Block SPN::inv_permutate(const Block message) {
     return result;
 }
 
+Block SPN::applySbox(const Block data, const uint8_t *table) const {
+    Block result = 0;
+    const Block mask = (1ULL << sbox_chunk_size) - 1;
+    const int num_chunks = 16 / sbox_chunk_size;
 
-Block SPN::SBOXLayer(Block plaintext, bool inverse, bool reduceSbox) const {
-    Block result = 0 ;
-    // Déchiffrement de la SBOX 
-    if(inverse){
-        if(reduceSbox){
-            for(int i = 4 ; i > 0 ; i--){
-                Block buffer = plaintext >> 4*(i-1) ;    
-                uint16_t var = buffer & 0x000F ; 
-                result = result |( INVERSE_SBOX4_ARRAY[var] << 4*(i-1))  ;            
-            } 
-        } else {
-            for(int i = 2 ; i > 0 ; i--){
-                Block buffer = plaintext >> 8*(i-1) ;    
-                uint16_t var = buffer & 0x00FF ; 
-                result = result |( INVERSE_SBOX8_ARRAY[var] << 8*(i-1))  ;            
-            }
-        }
-    } // Chiffrement de la SBOX 
-    else{
-        if(reduceSbox){
-            for(int i = 4 ; i > 0 ; i--){
-                Block buffer = plaintext >> 4*(i-1) ;    
-                uint16_t var = buffer & 0x000F ; 
-                result = result |( SBOX4_ARRAY[var] << 4*(i-1))  ;            
-            } 
-        } else {
-            for(int i = 2 ; i > 0 ; i--){
-                Block buffer = plaintext >> 8*(i-1) ;    
-                uint16_t var = buffer & 0x00FF ; 
-                result = result | ( SBOX8_ARRAY[var] << 8*(i-1))  ;            
-            }
-        }
+    for (int i = 0; i < num_chunks; ++i) {
+        const int shift = i * sbox_chunk_size;
+        const uint16_t extract = (data >> shift) & mask;
+        result |= (static_cast<Block>(table[extract]) << shift);
     }
-    return result ;
+
+    return result;
 }
 
-Block SPN::encrypt(Block plaintext) const {
+Block SPN::encrypt(const Block plaintext) const {
     Block result = plaintext;
 
-    for (int i = 0; i < num_rounds - 1; i++) {
-        // XOR avec la clé du round actuel
-        result = result ^ round_keys.at(i);
-
-        result = SBOXLayer(result,0,REDUCE_SBOX_SIZE) ;
-
-        // Permutation par la PBOX
+    for (int i = 0; i < num_rounds; i++) {
+        result ^= round_keys.at(i);
+        result = applySbox(result, sbox_table);
         result = permutate(result);
     }
 
-    // Dernier XOR
-    return result ^ round_keys.at(SPN::num_rounds - 1);
+    return result ^ round_keys.at(num_rounds);
 }
 
-Block SPN::decrypt(Block ciphertext) const {
+Block SPN::decrypt(const Block ciphertext) const {
     Block result = ciphertext;
 
-    for (int i = num_rounds - 1; i > 0; i--) {
-        // XOR avec la clé du round actuel
-        result = result ^ round_keys.at(i);
+    result ^= round_keys.at(num_rounds);
 
-        // Permutation par la PBOX
+    for (int i = num_rounds - 1; i >= 0; i--) {
         result = inv_permutate(result);
-
-        result = SBOXLayer(result,1,REDUCE_SBOX_SIZE) ;
+        result = applySbox(result, inv_sbox_table);
+        result ^= round_keys.at(i);
     }
 
     // Dernier XOR
-    return result ^ round_keys.at(0);
+    return result;
 }
