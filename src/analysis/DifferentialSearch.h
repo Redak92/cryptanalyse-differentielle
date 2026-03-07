@@ -31,7 +31,4 @@ public:
     // Complexité : O(2^{n/2} * p^-1).
     // Utilise la méthode Surrogate et les collisions.
     [[nodiscard]] std::vector<DifferentialCandidate> runFundamentalAlgorithm(double probabilityThreshold) const;
-
-    // La fonction g_gamma (Section 2.2)
-    [[nodiscard]] Block computeDerivative(Block x, Difference gamma) const;
 };
