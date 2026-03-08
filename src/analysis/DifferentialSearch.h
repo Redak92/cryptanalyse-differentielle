@@ -31,4 +31,9 @@ public:
     // Complexité : O(2^{n/2} * p^-1).
     // Utilise la méthode Surrogate et les collisions.
     [[nodiscard]] std::vector<DifferentialCandidate> runFundamentalAlgorithm(double probabilityThreshold) const;
+
+    // --- ALGO 4 : PIRE CAS ---
+    // Complexité : O(2^n * p^-(3/2)).
+    // Teste 200n/p gamma aléatoires.
+    [[nodiscard]] std::vector<DifferentialCandidate> runWorstCaseAlgorithm(double probabilityThreshold) const;
 };

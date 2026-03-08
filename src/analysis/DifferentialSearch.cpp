@@ -18,7 +18,7 @@ DifferentialSearch::DifferentialSearch(const ICipher &targetCipher) : cipher(tar
     const uint64_t limit = 1ULL << n;
     const auto pairsPerDifference = static_cast<uint64_t>(4.0 / probabilityThreshold);
 
-#pragma omp parallel num_threads(omp_get_max_threads())
+#pragma omp parallel default(none) shared(globalResults, limit, pairsPerDifference)
     {
         // Générateur aléatoire
         std::random_device rd;
@@ -28,16 +28,15 @@ DifferentialSearch::DifferentialSearch(const ICipher &targetCipher) : cipher(tar
         std::vector<DifferentialCandidate> localResults;
 
         // 2. On boucle sur toutes les différences possibles (alpha)
-#pragma omp for schedule(dynamic)
-        for (uint64_t i = 1; i < limit; ++i) {
-
+#pragma omp for schedule(static)
+        for (int64_t  i = 1; i < static_cast<int64_t>(limit); ++i) {
             // Table pour compter les sorties beta pour cet alpha
             std::unordered_map<Difference, int> betaCounts;
 
             for (uint64_t k = 0; k < pairsPerDifference; ++k) {
                 // Générer x et y
                 const auto x = dis(gen);
-                const Block y = x ^ i;
+                const Block y = x ^  static_cast<uint64_t>(i);
 
                 // Chiffrer
                 const Block c1 = cipher.encrypt(x);
@@ -53,7 +52,7 @@ DifferentialSearch::DifferentialSearch(const ICipher &targetCipher) : cipher(tar
                 // Comme démontré dans le rapport, cela élimine le bruit (loi de Poisson).
                 if (count > 1) {
                     DifferentialCandidate candidate{};
-                    candidate.alpha = i;
+                    candidate.alpha =  static_cast<uint64_t>(i);
                     candidate.beta = beta;
                     candidate.probability = static_cast<double>(count) / static_cast<double>(pairsPerDifference);
 
@@ -118,8 +117,8 @@ DifferentialSearch::DifferentialSearch(const ICipher &targetCipher) : cipher(tar
     for (auto const &[key, count]: counters) {
         if (count < static_cast<uint32_t>(n / 4)) continue;
 
-        const auto alpha = key >> 32;
-        const auto beta = key & 0xFFFFFFFF;
+        const Block alpha = key >> 32;
+        const Block beta = key & 0xFFFFFFFF;
 
         uint64_t hits = 0;
         for (uint64_t i = 0; i < N_verify; ++i) {
@@ -134,6 +133,74 @@ DifferentialSearch::DifferentialSearch(const ICipher &targetCipher) : cipher(tar
                 static_cast<double>(hits) / static_cast<double>(N_verify)
             });
         }
+    }
+
+    return results;
+}
+
+[[nodiscard]] std::vector<DifferentialCandidate> DifferentialSearch::runWorstCaseAlgorithm(
+    const double probabilityThreshold) const {
+    const int n = cipher.getBlockSize();
+    const uint64_t mask = (n < 64) ? (1ULL << n) - 1 : 0xFFFFFFFFFFFFFFFF;
+
+    const auto S = static_cast<uint64_t>(200.0 * n / probabilityThreshold);
+    const auto M = static_cast<uint64_t>(4.0 * std::pow(2.0, n / 2.0) * std::pow(probabilityThreshold, -0.5));
+    const auto threshold = static_cast<uint64_t>(0.28 * static_cast<double>(S) * probabilityThreshold);
+
+    std::unordered_map<uint64_t, uint64_t> L;
+
+#pragma omp parallel
+    {
+        std::random_device rd;
+        std::mt19937_64 gen(rd() ^ static_cast<uint64_t>(omp_get_thread_num()));
+        std::uniform_int_distribution<uint64_t> gamDis(1, mask);
+        std::uniform_int_distribution<uint64_t> xDis(0, mask);
+
+#pragma omp for schedule(dynamic)
+        for (int64_t  i = 0; i < static_cast<int64_t>(S); ++i) {
+            const Block gamma = gamDis(gen);
+
+            std::unordered_map<Block, std::vector<std::pair<Block, Block> > > hashmap;
+            std::unordered_set<uint64_t> Ltmp;
+
+            for (uint64_t j = 0; j < M; ++j) {
+                const Block x = xDis(gen);
+                const Block fx = cipher.encrypt(x);
+                const Block gx = fx ^ cipher.encrypt(x ^ gamma);
+
+                auto &bucket = hashmap[gx];
+                for (const auto &[prev_x, prev_fx]: bucket) {
+                    const Block alpha = x ^ prev_x;
+                    if (alpha == 0) continue;
+                    const Block beta = fx ^ prev_fx;
+                    const uint64_t key = (static_cast<uint64_t>(alpha) << 32)
+                                         | (static_cast<uint64_t>(beta) & 0xFFFFFFFFULL);
+                    Ltmp.insert(key);
+                }
+                bucket.emplace_back(x, fx);
+            }
+
+#pragma omp critical
+            {
+                for (const uint64_t key: Ltmp)
+                    L[key]++;
+            }
+        }
+    }
+
+    std::vector<DifferentialCandidate> results;
+
+    for (const auto &[key, cnt]: L) {
+        if (cnt < threshold) continue;
+
+        const Block alpha = key >> 32;
+        const Block beta = key & 0xFFFFFFFFULL;
+
+        results.push_back({
+            alpha,
+            beta,
+            static_cast<double>(cnt) / static_cast<double>(S)
+        });
     }
 
     return results;
