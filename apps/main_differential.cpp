@@ -21,8 +21,18 @@ int main()
     std::cout << "  Plaintexts to test: " << (1ULL << cipher.getBlockSize()) << "\n";
     std::cout << "  Complexity: 2^24 ≈ 16 million encryptions\n\n";
 
-    std::cout << "Running exhaustive analysis...\n";
-    auto best = run_exhaustive_differential_analysis(cipher);
+    std::cout << "Running exhaustive analysis (memory-optimized)...\n";
+    
+    // Une seule passe pour obtenir le top 5 (utilise O(2^n) mémoire au lieu de O(2^(2n)))
+    auto top5 = run_exhaustive_differential_analysis_streaming(cipher, 5);
+    
+    if (top5.empty())
+    {
+        std::cout << "No differentials found.\n";
+        return 1;
+    }
+    
+    const auto& best = top5[0];
 
     std::cout << "\n====================================================\n";
     std::cout << "  Results\n";
@@ -39,17 +49,9 @@ int main()
 
     std::cout << "\n====================================================\n";
     
-    // Demonstrate the new top-N method
+    // Top 5 (déjà calculé)
     std::cout << "  Top 5 Non-Trivial Differentials\n";
     std::cout << "====================================================\n\n";
-    
-    // Re-run analysis to get the DDT for querying top-N
-    uint32_t n_bits = static_cast<uint32_t>(cipher.getBlockSize());
-    DifferentialDistributionTable ddt(n_bits);
-    compute_full_ddt_exhaustive(cipher, ddt);
-    normalize_ddt(ddt, 1ULL << n_bits);
-    
-    auto top5 = ddt.find_best_non_trivial_top_n(5);
     
     for (size_t i = 0; i < top5.size(); ++i)
     {

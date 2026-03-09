@@ -11,7 +11,11 @@ namespace diffcrypto
 {
 
 // Maximum iterations per differential search loop (0 = no limit, use full block count)
-constexpr uint64_t MAX_ITERATIONS = 0;
+// Runtime-configurable via get_max_iterations() / set_max_iterations()
+inline uint64_t g_max_iterations = 0;
+
+inline uint64_t get_max_iterations() { return g_max_iterations; }
+inline void set_max_iterations(uint64_t value) { g_max_iterations = value; }
 
 using Count  = uint64_t;
 using Prob   = double;
@@ -101,6 +105,21 @@ void compute_all_probabilities(DifferentialDistributionTable& ddt);
 
 DifferentialPair run_exhaustive_differential_analysis(
     const ICipher& cipher
+);
+
+/**
+ * @brief Version optimisée mémoire de l'analyse exhaustive
+ * 
+ * Utilise O(2^n + k) mémoire au lieu de O(2^(2n)) en traitant
+ * chaque delta_in séquentiellement avec un compteur temporaire.
+ * 
+ * @param cipher Le chiffrement à analyser
+ * @param top_k Nombre de meilleures différentielles à conserver
+ * @return std::vector<DifferentialPair> Les top_k meilleures différentielles
+ */
+std::vector<DifferentialPair> run_exhaustive_differential_analysis_streaming(
+    const ICipher& cipher,
+    size_t top_k = 1
 );
 
 }

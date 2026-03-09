@@ -34,6 +34,7 @@ add_library(crypto_core
         src/utils/Display.cpp
         src/analysis/DifferentialSearch.cpp
         src/analysis/naive_analysis.cpp
+        src/Regression/Regression.cpp
         src/ciphers/CustomFeistel/CustomFeistel.cpp
         src/ciphers/Speck/Speck.cpp
         src/ciphers/SPN/SPN.cpp
@@ -65,6 +66,9 @@ target_link_libraries(demo_speck crypto_core)
 
 add_executable(demo_otp apps/main_otp.cpp)
 target_link_libraries(demo_otp crypto_core)
+
+add_executable(benchmark_exhaustive_2 apps/benchmark_exhaustive_2.cpp)
+target_link_libraries(benchmark_exhaustive_2 crypto_core)
 
 # Benchmark CUDA vs CPU
 if(CMAKE_CUDA_COMPILER)

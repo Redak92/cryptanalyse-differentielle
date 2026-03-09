@@ -157,7 +157,8 @@ void process_fixed_input_difference(
     DifferentialDistributionTable& ddt)
 {
     uint64_t block_count = ddt.table_dimension();
-    uint64_t limit = (MAX_ITERATIONS > 0 && MAX_ITERATIONS < block_count) ? MAX_ITERATIONS : block_count;
+    uint64_t max_iter = get_max_iterations();
+    uint64_t limit = (max_iter > 0 && max_iter < block_count) ? max_iter : block_count;
     for (uint64_t x = 0; x < limit; ++x)
     {
         process_single_pair(cipher, x, delta_in, ddt);
@@ -169,7 +170,8 @@ void compute_full_ddt_exhaustive(
     DifferentialDistributionTable& ddt)
 {
     uint64_t block_count = ddt.table_dimension();
-    uint64_t limit = (MAX_ITERATIONS > 0 && MAX_ITERATIONS < block_count) ? MAX_ITERATIONS : block_count;
+    uint64_t max_iter = get_max_iterations();
+    uint64_t limit = (max_iter > 0 && max_iter < block_count) ? max_iter : block_count;
     for (uint64_t delta_in = 1; delta_in < limit; ++delta_in)
     {
         process_fixed_input_difference(cipher, delta_in, ddt);
@@ -214,13 +216,77 @@ void compute_all_probabilities(DifferentialDistributionTable& ddt)
 DifferentialPair run_exhaustive_differential_analysis(
     const ICipher& cipher)
 {
-    uint32_t n_bits = cipher.getBlockSize();
-    DifferentialDistributionTable ddt(n_bits);
+    // Utilise la version streaming optimisée mémoire
+    auto results = run_exhaustive_differential_analysis_streaming(cipher, 1);
+    if (results.empty())
+    {
+        return {0, 0, 0.0};
+    }
+    return results[0];
+}
 
-    compute_full_ddt_exhaustive(cipher, ddt);
-    normalize_ddt(ddt, 1ULL << n_bits);
+std::vector<DifferentialPair> run_exhaustive_differential_analysis_streaming(
+    const ICipher& cipher,
+    size_t top_k)
+{
+    uint32_t n_bits = static_cast<uint32_t>(cipher.getBlockSize());
+    uint64_t block_count = 1ULL << n_bits;
+    uint64_t max_iter = get_max_iterations();
+    uint64_t limit = (max_iter > 0 && max_iter < block_count) ? max_iter : block_count;
 
-    return find_global_best_differential(ddt);
+    std::vector<DifferentialPair> best_differentials;
+    best_differentials.reserve(top_k + 1);
+    
+    // Compteur temporaire pour Dout
+    std::vector<Count> temp_counts(block_count, 0);
+    
+    // Pour chaque différentielle d'entrée
+    for (uint64_t delta_in = 1; delta_in < limit; ++delta_in)
+    {
+        // Reset cpt
+        std::fill(temp_counts.begin(), temp_counts.end(), 0);
+        
+        // Compter les Dout pour ce Din
+        for (uint64_t x = 0; x < limit; ++x)
+        {
+            Block c1 = cipher.encrypt(x);
+            Block c2 = cipher.encrypt(x ^ delta_in);
+            Block delta_out = c1 ^ c2;
+            temp_counts[delta_out]++;
+        }
+        
+        // Trouver le meilleur Dout pour ce Din
+        for (uint64_t delta_out = 0; delta_out < block_count; ++delta_out)
+        {
+            if (temp_counts[delta_out] > 0)
+            {
+                Prob prob = static_cast<Prob>(temp_counts[delta_out]) / static_cast<Prob>(limit);
+                
+                if (best_differentials.size() < top_k || prob > best_differentials.back().probability)
+                {
+                    DifferentialPair pair = {delta_in, delta_out, prob};
+                    
+           
+                    auto it = std::lower_bound(
+                        best_differentials.begin(),
+                        best_differentials.end(),
+                        pair,
+                        [](const DifferentialPair& a, const DifferentialPair& b) {
+                            return a.probability > b.probability;
+                        }
+                    );
+                    best_differentials.insert(it, pair);
+                    
+                    if (best_differentials.size() > top_k)
+                    {
+                        best_differentials.pop_back();
+                    }
+                }
+            }
+        }
+    }
+    
+    return best_differentials;
 }
 
 }
