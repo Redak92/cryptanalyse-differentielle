@@ -20,7 +20,7 @@ public:
     // --- ALGO 1 : NAÏF ABSOLU ---
     // Complexité : O(2^{2n}). Teste toutes les paires (x, y) possibles.
     // Inutilisable si n > 16.
-    std::vector<DifferentialCandidate> runBruteForceSearch();
+    [[nodiscard]] std::vector<DifferentialCandidate> runBruteForceSearch(double probabilityThreshold) const;
 
     // --- ALGO 2 : NAÏF OPTIMISÉ ---
     // Complexité : O(2^n * p^-1).
