@@ -4,6 +4,8 @@
 #include <cmath>
 #include <omp.h>
 #include <unordered_set>
+#include <algorithm>
+#include <iostream>
 
 // Constructeur
 DifferentialSearch::DifferentialSearch(const ICipher &targetCipher) : cipher(targetCipher) {
@@ -245,6 +247,133 @@ DifferentialSearch::DifferentialSearch(const ICipher &targetCipher) : cipher(tar
             beta,
             static_cast<double>(cnt) / static_cast<double>(S)
         });
+    }
+
+    return results;
+}
+
+
+[[nodiscard]] std::vector<DifferentialCandidate> DifferentialSearch::runMemoryEfficientAlgorithm(
+    const double probabilityThreshold) const {
+
+    const int n = cipher.getBlockSize();
+    const uint64_t mask = (n < 64) ? (1ULL << n) - 1 : 0xFFFFFFFFFFFFFFFF;
+
+    // Calcul du M idéal de l'algorithme fondamental
+    const double M_ideal = std::sqrt(n) * std::pow(2.0, n / 2.0) / probabilityThreshold;
+    const auto N_verify = static_cast<uint64_t>(n / probabilityThreshold);
+    
+    // Limite stricte de RAM (100 millions d'entrées = environ 2.3 Go de RAM)
+    const uint64_t M_MAX = 100000000;
+    
+    uint64_t M_batch = static_cast<uint64_t>(M_ideal);
+    uint64_t nb_batches = 1;
+
+    if (M_ideal > M_MAX) {
+        M_batch = M_MAX;
+        // Si on divise la taille du tableau par K, le nombre de paires générées
+        // chute de K^2. Il faut donc K^2 batches pour retrouver 100% de nos probabilités.
+        double K = M_ideal / static_cast<double>(M_MAX);
+        nb_batches = static_cast<uint64_t>(std::ceil(K * K));
+    }
+
+    std::random_device rd;
+    std::mt19937_64 gen(rd());
+    std::uniform_int_distribution<uint64_t> dis(0, mask);
+
+    // --- LE FILTRE DE FRÉQUENCE (1 Go de RAM fixe) ---
+    const uint64_t FILTER_SIZE = 1024 * 1024 * 1024; // 1 Milliard de cases
+    std::vector<uint8_t> frequency_filter(FILTER_SIZE, 0);
+    
+    // On ne stocke ici que les "vrais" candidats qui ont passé le filtre
+    std::unordered_set<uint64_t> candidates_to_verify;
+    
+    struct Record { Block gx, x, fx; };
+
+    std::cout << "[Tradeoff] M theorique : " << static_cast<uint64_t>(M_ideal) << std::endl;
+    std::cout << "[Tradeoff] Taille du batch utilisee : " << M_batch << " (~" << (M_batch * 24 / 1024 / 1024) << " Mo)." << std::endl;
+    std::cout << "[Tradeoff] Nombre de batches necessaires : " << nb_batches << std::endl;
+
+    for (uint64_t b = 0; b < nb_batches; ++b) {
+        std::cout << "\r[Tradeoff] Progression : Batch " << (b + 1) << " / " << nb_batches << std::flush;
+
+        Block gamma;
+        do { gamma = dis(gen); } while (gamma == 0);
+
+        std::vector<Record> batch(M_batch);
+        
+        #pragma omp parallel
+        {
+            std::mt19937_64 local_gen(rd() ^ omp_get_thread_num());
+            std::uniform_int_distribution<uint64_t> local_dis(0, mask);
+
+            #pragma omp for schedule(static)
+            for (int64_t i = 0; i < static_cast<int64_t>(M_batch); ++i) {
+                const Block x = local_dis(local_gen);
+                const Block fx = cipher.encrypt(x);
+                const Block gx = fx ^ cipher.encrypt(x ^ gamma);
+                batch[i] = {gx, x, fx};
+            }
+        }
+
+        std::sort(batch.begin(), batch.end(), [](const Record& a, const Record& b) { return a.gx < b.gx; });
+
+        for (size_t i = 0; i < M_batch; ) {
+            size_t j = i + 1;
+            while (j < M_batch && batch[j].gx == batch[i].gx) j++;
+            
+            size_t count = j - i;
+            if (count > 1) {
+                for (size_t a = i; a < j; ++a) {
+                    for (size_t b = a + 1; b < j; ++b) {
+                        const Block alpha = batch[a].x ^ batch[b].x;
+                        if (alpha == 0) continue;
+                        
+                        const Block beta = batch[a].fx ^ batch[b].fx;
+                        const uint64_t key = (static_cast<uint64_t>(alpha) << 32) | (static_cast<uint64_t>(beta) & 0xFFFFFFFFULL);
+
+                        // On mélange les bits pour éviter les collisions de hachage
+                        size_t hash_idx = std::hash<uint64_t>{}(key) % FILTER_SIZE;
+                            
+                        // On incrémente le filtre (sans dépasser 255)
+                        if (frequency_filter[hash_idx] < 255) {
+                                frequency_filter[hash_idx]++;
+                        }
+                            
+                        // Si cette case a atteint n/4, on garde la vraie clé
+                        if (frequency_filter[hash_idx] >= static_cast<uint8_t>(n / 4)) {
+                            candidates_to_verify.insert(key);
+                        }
+                    }
+                }
+            }
+
+            i = j;
+        }
+    }
+
+    std::cout << std::endl;
+
+    std::cout << "[Tradeoff] Filtrage final sur " << candidates_to_verify.size() << " candidats." << std::endl;
+    std::vector<DifferentialCandidate> results;
+
+    for (uint64_t key : candidates_to_verify) {
+        const Block alpha = key >> 32;
+        const Block beta = key & 0xFFFFFFFF;
+
+        uint64_t hits = 0;
+        for (uint64_t i = 0; i < N_verify; ++i) {
+            if (const Block x = dis(gen); (cipher.encrypt(x) ^ cipher.encrypt(x ^ alpha)) == beta)
+                ++hits;
+        }
+
+        if (hits > static_cast<uint64_t>(n / 2)) {
+            results.push_back({
+                alpha,
+                beta,
+                static_cast<double>(hits) / static_cast<double>(N_verify)
+            });
+        }
     }
 
     return results;

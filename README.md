@@ -9,19 +9,21 @@ Crypto_TER/
 │   │   └── ICipher.h            # [Interface] Classe abstraite définissant un chiffrement par bloc.
 │   │
 │   ├── ciphers/                 # [Classes] Les implémentations des chiffrements (Cibles).
-│   │   │                        # ⚠️ CHAQUE DOSSIER DE CIPHER DOIT CONTENIR :
+│   │   │                        # CHAQUE DOSSIER DE CIPHER DOIT CONTENIR :
 │   │   │                        #    - Le code source (.h/.cpp)
 │   │   │                        #    - Une image/schéma de l'architecture du chiffrement
 │   │   │                        #    - Un README.md affichant cette image
-│   │   ├── ToySPN/              # Implémentation du SPN 16-bits (Baby-SPN).
+│   │   ├── ToySPN/              # Implémentation du SPN 16-bits.
 │   │   ├── CustomFeistel/       # Implémentation du Feistel maison.
 │   │   └── Speck/               # Implémentation de SPECK 32/64.
 │   │
 │   ├── analysis/                # [Classes] La logique de cryptanalyse.
-│   │   └── DifferentialSearch.h # Classe principale contenant 3 algorithmes de recherche :
+│   │   └── DifferentialSearch.h # Classe principale contenant 5 algorithmes de recherche :
 │   │                              1. Brute Force (Naïf absolu)
 │   │                              2. Standard Optimisé (Naïf intelligent)
-│   │                              3. Fondamental (Dinur et al. - Surrogate)
+│   │                              3. Fondamental
+│   │                              4. Worst-Case
+│   │                              5. Tradeoff
 │   │
 │   └── utils/                   # [Utilitaires]
 │       ├── Types.h              # Définitions des types (Block, Key, Difference).

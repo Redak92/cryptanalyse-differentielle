@@ -36,4 +36,11 @@ public:
     // Complexité : O(2^n * p^-(3/2)).
     // Teste 200n/p gamma aléatoires.
     [[nodiscard]] std::vector<DifferentialCandidate> runWorstCaseAlgorithm(double probabilityThreshold) const;
+
+
+    // --- ALGO 5 : MÉMOIRE RÉDUITE (Appendice A, Tradeoff 2) ---
+    // Complexité temps  : O(2^{n/2} * p^-1) identique à l'algo fondamental.
+    // Complexité mémoire: O(p^-2) amélioration d'un facteur 2^{n/2}*p.
+    // Remplace la grande hashmap globale par des batches PCS. 
+    [[nodiscard]] std::vector<DifferentialCandidate> runMemoryEfficientAlgorithm(double probabilityThreshold) const;
 };
