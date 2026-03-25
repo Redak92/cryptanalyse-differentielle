@@ -1,0 +1,154 @@
+\documentclass[a4paper,11pt]{article}
+
+% --- PACKAGES DE BASE ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage[default]{opensans}
+\usepackage{hyperref}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+% On réduit les marges pour avoir plus de place sur la page de garde
+\usepackage[margin=2cm]{geometry} 
+
+\definecolor{UPSaclayPrune}{RGB}{99, 0, 60}
+
+\begin{document}
+
+\begin{titlepage}
+    \begin{center}
+        % On remonte le logo tout en haut de la page
+        \vspace*{-1.5cm}
+        
+        % --- LOGO OFFICIEL ---
+        \includegraphics[width=0.45\textwidth]{Logotype UPSaclay_RVB.png} \\
+        \vspace{1cm}
+        
+        % --- TYPE DE DOCUMENT ET CURSUS ---
+        \Large
+        \textcolor{UPSaclayPrune}{\textbf{Rapport de TER (Travail d'Étude et de Recherche)}} \\
+        \vspace{0.4cm}
+        \large
+        \textbf{Master 1 Informatique - Parcours SeCReTS} \\
+        \normalsize
+        \textit{Sécurité des Contenus, des Réseaux, des Télécommunications et des Systèmes} \\
+        \vspace{0.2cm}
+        \normalsize
+        Université Paris-Saclay - Campus UVSQ (Versailles)
+        
+        \vspace{2cm}
+        
+        % --- TITRE OFFICIEL DU TER ---
+        \Huge
+        \textcolor{UPSaclayPrune}{\textbf{Détection efficace de propriétés statistiques de chiffrements symétriques}} \\
+        
+        \vspace{2.5cm}
+        
+        % --- AUTEURS (Groupe de 3) ---
+        \Large
+        \textbf{Présenté par :} \\
+        \vspace{0.3cm}
+        \normalsize
+        Alexandre FRANÇOIS \\
+        Binet DUPRÉ \\
+        Bastien GUIBERT
+        
+        \vfill 
+        
+        % --- ENCADRANT ---
+        \Large
+        \textbf{Sous la direction de :} \\
+        \vspace{0.2cm}
+        \normalsize
+        Jules BAUDRIN \\
+        \textit{Laboratoire de Mathématiques de Versailles (LMV) - UVSQ}
+        
+        \vspace{1cm}
+        
+        % --- INSTITUTION ET DATE ---
+        \normalsize
+        \textbf{Université Paris-Saclay} \\
+        Année universitaire 2025-2026 \\ 
+        \today
+        
+    \end{center}
+\end{titlepage}
+
+% --- DÉBUT DU RAPPORT ---
+\newpage
+\tableofcontents
+
+\subsection{L'Algorithme Naïf Absolu (Recherche Exhaustive)}
+
+La méthode la plus directe pour détecter des propriétés statistiques au sein d'un chiffrement symétrique consiste à évaluer de manière exhaustive toutes les paires possibles de textes clairs. Cet algorithme, que nous qualifierons de « naïf absolu », sert de point de référence théorique pour comprendre la mécanique de la cryptanalyse différentielle et construire la \textbf{Table de Distribution des Différences (DDT)}.
+
+\subsubsection{Principe Théorique (Version Brute)}
+Dans sa version conceptuelle la plus pure, l'algorithme ne possède aucun filtre ni optimisation. Pour chaque différence d'entrée possible $\alpha$ (allant de $1$ à $2^n - 1$, où $n$ est la taille du bloc en bits), il parcourt l'intégralité de l'espace des messages $x$ (soit $2^n$ messages). La boucle sur $\alpha$ commence délibérément à $1$ et non à $0$, car une différence $\alpha = 0$ implique des messages identiques ($x \oplus 0 = x$), conduisant toujours à une différence de sortie triviale $\beta = 0$, sans aucun intérêt cryptanalytique.
+
+Pour chaque message $x$, la version brute calcule les chiffrés à la volée, évalue la différence de sortie $\beta = F(x) \oplus F(x \oplus \alpha)$, et incrémente la case correspondante dans une matrice globale (la DDT complète de taille $2^n \times 2^n$).
+
+\subsubsection{Complexités de l'Algorithme Brut}
+L'évaluation de cette approche naïve met en évidence des limites drastiques :
+\begin{itemize}
+    \item \textbf{Complexité temporelle :} $\mathcal{O}(2^{2n})$. Il y a approximativement $2^n$ différences d'entrées $\alpha$ à tester, et pour chacune d'elles on évalue $2^n$ messages $x$, ce qui nécessite $2 \times 2^{2n}$ opérations de chiffrement. Cette complexité quadratique rend la méthode strictement inutilisable en temps raisonnable dès que $n > 16$.
+    \item \textbf{Complexité en données :} $\mathcal{O}(2^n)$. L'algorithme nécessite le chiffrement de l'ensemble de l'espace des textes clairs possibles.
+    \item \textbf{Complexité spatiale (mémoire) :} $\mathcal{O}(2^{2n})$. Stocker la DDT complète en mémoire requiert une matrice de taille $2^n \times 2^n$ entiers, ce qui sature instantanément la mémoire vive pour des tailles de blocs standards.
+\end{itemize}
+
+\subsubsection{De la théorie à la pratique : Nos optimisations}
+Pour pouvoir exécuter cette recherche exhaustive efficacement sur des « chiffrements jouets » ($n \le 16$), l'implémentation théorique brute a dû être repensée. L'intégralité de notre code optimisé, développé en C++, est disponible sur notre dépôt GitHub public (\url{https://github.com/Redak92/cryptanalyse-differentielle}), dans le fichier \url{src/analysis/DifferentialSearch.cpp}.
+
+Nous avons introduit trois optimisations majeures pour rendre l'algorithme praticable :
+
+\begin{enumerate}
+    \item \textbf{Pré-calcul des chiffrés (\textit{ftable}) :} Pour briser la complexité temporelle due aux appels répétés à la fonction d'évaluation, nous avons mis en place un compromis Temps/Mémoire (Time/Memory Trade-off). Nous chiffrons l'ensemble des $2^n$ messages possibles une seule fois au début de l'exécution et les stockons dans une \textit{Lookup Table} nommée \texttt{ftable}. Le calcul de $\beta$ devient alors une simple lecture en mémoire : \texttt{ftable[x] $\oplus$ ftable[x $\oplus$ $\alpha$]}.
+    \item \textbf{Filtrage à la volée (Génération de pDDT) :} En cryptanalyse différentielle, nous ne nous intéressons qu'aux différentielles à haute probabilité, qui traduisent une véritable faiblesse de la primitive. Si le chiffrement est un minimum bien conçu, la vaste majorité des entrées d'une DDT classique n'est constituée que de bruit statistique sans valeur exploitable. Notre algorithme s'aligne sur ce principe en prenant en paramètre un seuil de probabilité (\texttt{probabilityThreshold}) pour ne générer qu'une \textbf{DDT partielle (pDDT)}. L'algorithme utilise un tableau temporaire de compteurs de taille $2^n$ et, à la fin de chaque itération sur $\alpha$, ne sauvegarde que les différentielles atteignant la probabilité requise. En éliminant tout ce bruit inutile, l'empreinte mémoire de la structure finale est drastiquement réduite, évitant ainsi le stockage d'une matrice en $\mathcal{O}(2^{2n})$.
+    \item \textbf{Parallélisation (OpenMP) :} L'itération principale parcourant les différences $\alpha$ fait l'objet d'une parallélisation. Chaque thread CPU alloue son propre sous-tableau de compteurs pour éviter les accès concurrents, ce qui divise drastiquement le temps d'exécution sur les architectures multi-cœurs.
+\end{enumerate}
+
+\subsubsection{Pseudo-code de notre implémentation}
+
+Le pseudo-code suivant résume l'algorithme tel qu'il a été implémenté et optimisé dans notre code source.
+
+\begin{algorithm}[H]
+\caption{Recherche Différentielle Naïve Optimisée (Génération de pDDT)}
+\begin{algorithmic}[1]
+\Statex \textbf{Entrées :} $F$ (fonction de chiffrement), $n$ (taille du bloc), $p$ (seuil de probabilité)
+\Statex \textbf{Sortie :} Liste des différentielles $(\alpha, \beta)$ ayant une probabilité $\ge p$
+\State $limit \gets 2^n$
+\State $minCount \gets p \times limit$
+\State Initialiser un tableau $ftable$ de taille $limit$
+\State \textit{// Remplissage de la ftable (Pré-calculs)}
+\For{$x \gets 0$ \textbf{to} $limit - 1$}
+    \State $ftable[x] \gets F(x)$
+\EndFor
+\State \textit{// Boucle parallélisée (OpenMP)}
+\For{$\alpha \gets 1$ \textbf{to} $limit - 1$}
+    \State Initialiser un tableau $counts$ de taille $limit$ à $0$
+    \For{$x \gets 0$ \textbf{to} $limit - 1$}
+        \State $\beta \gets ftable[x] \oplus ftable[x \oplus \alpha]$
+        \State $counts[\beta] \gets counts[\beta] + 1$
+    \EndFor
+    \For{$\beta \gets 0$ \textbf{to} $limit - 1$}
+        \If{$counts[\beta] > minCount$}
+            \State Sauvegarder $(\alpha, \beta, \frac{counts[\beta]}{limit})$
+        \EndIf
+    \EndFor
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Limites matérielles et Stratégies d'adaptation}
+Bien que très efficace sur des chiffrements jouets, cette implémentation se heurte rapidement au « mur de la RAM » lorsque $n$ augmente. Par exemple, pour analyser Speck 32/64 ($n=32$), le simple fait de stocker la \texttt{ftable} (contenant $2^{32}$ blocs de 64 bits, soit 8 octets par bloc) nécessite $2^{32} \times 8 \approx 34,36$ Go de RAM, provoquant la saturation immédiate d'un ordinateur personnel standard.
+
+Lorsque la taille du bloc menace les capacités matérielles, l'algorithme doit être adapté en sacrifiant la vitesse d'exécution pour préserver la mémoire :
+\begin{itemize}
+    \item \textbf{Suppression du pré-calcul (Évaluation à la volée) :} C'est la solution la plus radicale pour sauver la RAM. En supprimant totalement l'\texttt{ftable}, l'algorithme ne stocke plus rien au préalable. Il calcule $F(x)$ et $F(x \oplus \alpha)$ à chaque itération. L'empreinte spatiale redevient minime, mais le temps d'exécution explose (la complexité temporelle repassant à son maximum quadratique).
+    \item \textbf{Désactiver la parallélisation :} Une option d'allègement consiste à repasser en mode séquentiel. On évite ainsi l'allocation multiple des grands tableaux de compteurs (\texttt{counts}) par les différents threads CPU.
+    \item \textbf{Nettoyage à la volée (\textit{flush \& clear}) :} Au lieu de stocker toutes les différentielles valides en mémoire dans une unique structure de résultats finale, l'algorithme affiche immédiatement sur la sortie standard (stdout) les paires trouvées pour un $\alpha$ donné, puis vide et réinitialise sa mémoire avant de passer au $\alpha$ suivant.
+\end{itemize}
+
+\end{document}
