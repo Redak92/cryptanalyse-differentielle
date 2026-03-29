@@ -8,19 +8,21 @@
 \usepackage{xcolor}
 \usepackage[default]{opensans}
 \usepackage{hyperref}
-\usepackage{algorithm}
+\usepackage{algorithm}\usepackage{hyperref}
+\usepackage{amsmath} 
 \usepackage{algpseudocode}
-
-% On réduit les marges pour avoir plus de place sur la page de garde
 \usepackage[margin=2cm]{geometry} 
 
 \definecolor{UPSaclayPrune}{RGB}{99, 0, 60}
+
+\hypersetup{
+    hidelinks
+}
 
 \begin{document}
 
 \begin{titlepage}
     \begin{center}
-        % On remonte le logo tout en haut de la page
         \vspace*{-1.5cm}
         
         % --- LOGO OFFICIEL ---
@@ -47,7 +49,7 @@
         
         \vspace{2.5cm}
         
-        % --- AUTEURS (Groupe de 3) ---
+        % --- AUTEURS ---
         \Large
         \textbf{Présenté par :} \\
         \vspace{0.3cm}
@@ -80,6 +82,7 @@
 % --- DÉBUT DU RAPPORT ---
 \newpage
 \tableofcontents
+\newpage
 
 \subsection{L'Algorithme Naïf Absolu (Recherche Exhaustive)}
 
@@ -150,5 +153,48 @@ Lorsque la taille du bloc menace les capacités matérielles, l'algorithme doit 
     \item \textbf{Désactiver la parallélisation :} Une option d'allègement consiste à repasser en mode séquentiel. On évite ainsi l'allocation multiple des grands tableaux de compteurs (\texttt{counts}) par les différents threads CPU.
     \item \textbf{Nettoyage à la volée (\textit{flush \& clear}) :} Au lieu de stocker toutes les différentielles valides en mémoire dans une unique structure de résultats finale, l'algorithme affiche immédiatement sur la sortie standard (stdout) les paires trouvées pour un $\alpha$ donné, puis vide et réinitialise sa mémoire avant de passer au $\alpha$ suivant.
 \end{itemize}
+
+\subsection{L'Algorithme de Recherche Standard : Une approche statistique}
+
+Bien que l'algorithme exhaustif soit utile pour des paramètres très réduits, sa complexité en $\mathcal{O}(2^{2n})$ devient extrêmement lourde pour des chiffrements traitant des blocs de 32 bits, et totalement impraticable au-delà. Pour pallier cette limitation, une approche naturelle consiste à transformer la recherche déterministe en un problème d'échantillonnage statistique. Cet algorithme est décrit par Dinur et al. comme l'adaptation classique de la construction d'une DDT pour détecter des différentielles de probabilité supérieure à un seuil $p$.
+
+\subsubsection{Principes et Fondements Statistiques : Distinguer le signal du bruit}
+
+Plutôt que de sonder l'immensité de l'espace des messages, l'algorithme privilégie une stratégie par échantillonnage. Pour chaque différence d'entrée $\alpha$, nous testons un nombre fixe $k$ de paires aléatoires. Cette approche transforme la recherche en un défi statistique où l'objectif est de faire émerger un \og signal \fg{} (une différentielle réelle) d'un \og bruit \fg{} de fond aléatoire.
+
+\vspace{0.5cm}
+
+Le nombre de succès $X$, représentant le nombre de paires dont la différence de sortie est effectivement $\beta$, suit initialement une loi binomiale $\mathcal{B}(k, p)$. Cependant, face à un nombre de tirages $k$ élevé et une probabilité de succès $p$ très faible, nous basculons dans le domaine de la \textbf{loi des événements rares}. La distribution de $X$ peut alors être approximée par une \textbf{loi de Poisson} $\mathcal{P}(\lambda)$. Dans ce modèle, le paramètre $\lambda$ représente l'espérance mathématique du nombre de succès, soit $\lambda = k \times p$. La probabilité d'obtenir exactement $x$ succès est donnée par la formule $P(X = x) = \frac{\lambda^x e^{-\lambda}}{x!}$.
+
+Pour garantir que nous ne passerons pas à côté d'une différentielle significative, les auteurs fixent $k = 4/p$ ($\lambda = 4$). La probabilité de détection se calcule par le complémentaire :
+\begin{equation*}
+    P(X \ge 2) = 1 - (P(X = 0) + P(X = 1)) = 1 - \left(\frac{\lambda^0 e^{-\lambda}}{0!} + \frac{\lambda^1 e^{-\lambda}}{1!}\right) = 1 - e^{-\lambda}(1+\lambda)
+\end{equation*}
+Pour $\lambda = 4$, on obtient $1 - 5e^{-4} \approx 0,9085$, validant le seuil de confiance de 90 \% de la littérature.
+
+\vspace{0.5cm}
+
+Le choix du critère $count \ge 2$ est crucial pour séparer le signal du bruit. Pour une permutation aléatoire, la probabilité d'une collision fortuite est extrêmement faible ($p_{rand} = \frac{1}{2^n - 1}$). Avec Speck 64 ($n=64$) et $p=2^{-13}$, l'espérance du bruit $\lambda_{rand} = k \times p_{rand}$ est d'environ $2^{-49}$.
+
+Pour évaluer la probabilité qu'un tel bruit génère un faux positif, nous utilisons le \textbf{développement limité de Taylor} de l'exponentielle au voisinage de zéro : $e^{-\lambda} \approx 1 - \lambda + \frac{\lambda^2}{2}$. La démonstration complète de ce développement est disponible sur le site \textit{Math-Linux}\footnote{\href{https://www.math-linux.com/mathematiques/developpements-limites/article/developpement-limite-de-exp-x-en-0-demonstration}{Lien vers la démonstration du DL de l'exponentielle}}. 
+
+L'usage de ce développement est ici indispensable car $\lambda$ est extrêmement petit, il permet de simplifier l'exponentielle en une simple puissance, ce qui permet d'évaluer facilement des probabilités extrêmement faibles. En injectant cette approximation dans notre formule factorisée, le calcul devient :
+\begin{equation*}
+    P(X \ge 2) \approx 1 - \left(1 - \lambda + \frac{\lambda^2}{2}\right)(1 + \lambda) = 1 - \left(1 + \lambda - \lambda - \lambda^2 + \frac{\lambda^2}{2} + \frac{\lambda^3}{2}\right)
+\end{equation*}
+En négligeant le terme en $\lambda^3$ (d'ordre supérieur et donc totalement insignifiant face à $\lambda^2$ quand $\lambda \to 0$), on aboutit à :
+\begin{equation*}
+    P(X \ge 2) \approx 1 - \left(1 - \frac{\lambda^2}{2}\right) = \frac{\lambda^2}{2}
+\end{equation*}
+
+Dans notre exemple, cette probabilité de faux signal chute à environ $2^{-99}$, ce qui rend toute collision accidentelle statistiquement impossible et prouve l'existence d'une structure non aléatoire.
+
+\subsubsection{Analyse de l'implémentation C++ et Limites}
+
+Notre implémentation, disponible dans le fichier \url{src/analysis/DifferentialSearch.cpp}, exploite le multi-threading via OpenMP pour paralléliser l'itération sur les différences $\alpha$. Contrairement à l'algorithme exhaustif, l'utilisation de \texttt{std::\allowbreak unordered\_map} permet de ne stocker que les différences rencontrées, optimisant ainsi la mémoire vive.
+
+Toutefois, ce moteur reste limité par le facteur $2^n$. Pour un chiffrement comme \textbf{Speck 64/128}, l'algorithme doit itérer, à minima, $2^{64}$ fois, ce qui est prohibitif sur un ordinateur personnel.
+
+C'est cette barrière qui justifie l'introduction de l'algorithme probabiliste présenté dans l'article. En s'appuyant sur le \textbf{paradoxe des anniversaires}, ce dernier permet de convertir la recherche de différentielles en une recherche de collisions, abaissant la complexité à l'ordre de $2^{n/2} \cdot p^{-1}$.
 
 \end{document}
