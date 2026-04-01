@@ -303,6 +303,98 @@ Sur le plan purement théorique, stocker chaque évaluation nécessite a minima 
 
 Ainsi, même pour analyser un chiffrement « jouet » de 32 bits, l'algorithme exige théoriquement un minimum absolu de 24 Go de mémoire vive. À titre de comparaison, passer à un bloc standard de 64 bits avec la même probabilité ferait exploser ce besoin brut à plusieurs centaines de Téraoctets.
 
-Cette limitation physique absolue justifie la nécessité de recourir à des variantes de l'algorithme plus économes en ressources. Les auteurs proposent notamment un algorithme de \textbf{Tradeoff Temps/Mémoire} (présenté en annexe de l'article). Ce dernier permet de maintenir une complexité temporelle compétitive, de l'ordre de $\tilde{\mathcal{O}}(2^{n/2}p^{-1})$, tout en réduisant considérablement l'usage mémoire à $\tilde{\mathcal{O}}(p^{-2})$.
+Cette limitation physique absolue justifie la nécessité de recourir à des variantes de l'algorithme plus économes en ressources. Pour contourner ce « mur de la RAM », les auteurs explorent deux voies successives : une première approche radicale supprimant totalement le stockage, suivie d'une approche plus équilibrée reposant sur un compromis temps/mémoire.
+
+\subsection{L'Algorithme Sans Mémoire (\textit{Memoryless}) : Le prix du temps}
+
+Pour pallier le problème rédhibitoire de l'empreinte spatiale de l'algorithme fondamental, les auteurs présentent à la page 13 de leur article une variante dite « sans mémoire » (\textit{memoryless}). Cette approche permet de ramener la consommation de mémoire vive à une constante $\mathcal{O}(1)$, éliminant de facto le « mur de la RAM ».
+
+Pour réussir ce tour de force, l'algorithme abandonne complètement la génération d'un large échantillon stocké dans une table de hachage. À la place, il utilise l'algorithme de détection de cycles de Pollard (le fameux $\rho$ de Pollard) pour trouver des collisions dans la fonction $g_{\gamma}$ à la volée, une par une. Chaque fois qu'une collision est détectée, la différence $(\alpha, \beta)$ correspondante est immédiatement extraite et soumise à la phase de vérification exhaustive. L'algorithme ne stocke aucun historique.
+
+Cependant, cette économie spatiale drastique se paie au prix fort sur le plan des performances. Puisque l'algorithme perd la vision globale offerte par le paradoxe des anniversaires sur un grand tableau, il doit tester aveuglément de très nombreuses collisions inutiles avant de tomber sur un quatuor correct. Plus précisément, il faut extraire en moyenne $\mathcal{O}(p^{-2})$ collisions de la fonction $g_{\gamma}$ pour obtenir une correspondance valide. La recherche d'une collision par la méthode de Pollard coûtant $\mathcal{O}(2^{n/2})$, la complexité temporelle globale grimpe à :
+\begin{equation*}
+    \text{Temps}_{\text{memoryless}} = \mathcal{O}(2^{n/2}) \times \mathcal{O}(p^{-2}) = \mathcal{O}(2^{n/2}p^{-2})
+\end{equation*}
+(ceci étant valable dans le cas où $p \ge 2^{-n/2}$).
+
+Si l'on compare cette complexité à celle de l'algorithme fondamental, le rapport des temps d'exécution met en évidence l'ampleur du ralentissement :
+\begin{equation*}
+    \frac{\text{Temps}_{\text{memoryless}}}{\text{Temps}_{\text{fondamental}}} = \frac{2^{n/2}p^{-2}}{2^{n/2}p^{-1}} = p^{-1}
+\end{equation*}
+L'approche sans mémoire subit donc un \textbf{ralentissement direct d'un facteur $\mathbf{p^{-1}}$}.
+
+Pour bien mesurer l'impact de ce facteur, prenons un exemple concret sur le chiffrement Speck 32/64 ($n=32$) avec une différentielle de probabilité $p=2^{-13}$. Le calcul de la pénalité temporelle donne :
+\begin{equation*}
+    p^{-1} = (2^{-13})^{-1} = 2^{13} = 8192
+\end{equation*}
+Concrètement, cela signifie qu'une recherche qui prendrait \textbf{1 minute} avec l'algorithme fondamental prendrait $8192$ fois plus de temps avec cette variante sans mémoire. En détaillant la conversion :
+\begin{equation*}
+    8192 \text{ minutes} = \frac{8192}{60} \text{ heures} \approx 136,5 \text{ heures} \approx \textbf{5,68 jours}
+\end{equation*}
+
+Et plus la probabilité $p$ recherchée est faible, plus ce gouffre temporel se creuse. Bien que hautement parallélisable, cette méthode s'avère donc beaucoup trop lente pour être exploitée efficacement sur des machines standards, qui disposent pourtant de plusieurs gigaoctets de RAM laissés inutilisés par cette approche. C'est précisément pour combler ce vide entre le « tout mémoire » (incalculable) et le « sans mémoire » (interminable) que la solution du compromis a été développée.
+
+\subsection{L'Algorithme de Compromis Temps/Mémoire (Tradeoff)}
+
+Comme nous venons de le voir, l'approche fondamentale sature la mémoire vive, tandis que l'approche sans mémoire s'avère rédhibitoirement lente. Pour surmonter ce dilemme, les auteurs proposent en annexe de leur article d'exploiter la mémoire disponible (notée $S$) de façon stratégique pour concevoir des algorithmes de compromis (\textit{Tradeoffs}). Ils décrivent plus précisément deux variantes distinctes, adaptées à différentes capacités matérielles :
+
+\begin{itemize}
+    \item \textbf{Le Premier Compromis (Faible mémoire) :} Il s'agit d'une extension de l'algorithme dit « sans mémoire » (\textit{memoryless}). Conçu pour des environnements où l'espace $S$ est extrêmement restreint, il trouve un petit nombre de collisions et les teste toutes de manière systématique. Cette phase de vérification exhaustive alourdit considérablement la complexité temporelle (ajoutant un terme en $\tilde{\mathcal{O}}(p^{-3})$), le rendant sous-optimal sur des machines classiques.
+    \item \textbf{Le Second Compromis (Mémoire modérée) :} Il s'agit d'une extension de l'algorithme fondamental. Conçu pour des valeurs de $S$ plus larges, il élimine la coûteuse phase de test systématique en cherchant directement des collisions multiples pour filtrer le bruit en amont.
+\end{itemize}
+
+Dans le cadre de ce projet, les ordinateurs modernes standards disposant généralement d'une quantité de mémoire vive confortable (de 8 à 16 Go de RAM), nous ne sommes pas dans un scénario de mémoire critique absolue. Nous nous sommes donc naturellement penchés sur le \textbf{Second Algorithme de Compromis} (\textit{Tradeoff algorithm 2}). Cette approche permet de conserver la vitesse d'exécution optimale en $\tilde{\mathcal{O}}(2^{n/2} p^{-1})$ tout en plafonnant intelligemment l'utilisation de la mémoire à un espace fixe dimensionné à $\tilde{\mathcal{O}}(p^{-2})$.
+
+\subsubsection{Principe Théorique : Échantillonnage par lots (\textit{Batching})}
+
+Au lieu de générer et de stocker d'un seul coup un immense échantillon, l'algorithme procède par lots (\textit{batches}). Il alloue un espace mémoire fixe $S$, qui correspond directement au nombre de collisions que l'on s'autorise à conserver simultanément. Pour générer ces lots, l'algorithme exécute une boucle interne s'appuyant sur la recherche de collisions parallèles (\textit{Parallel Collision Search} ou PCS). Cette technique permet de trouver des collisions dans une fonction pseudo-aléatoire sans avoir à mémoriser toutes ses évaluations, réduisant ainsi drastiquement l'empreinte spatiale.
+
+Pour un substitut $\gamma$ donné (appelé « saveur » ou \textit{flavor}), l'algorithme extrait donc un lot contenant exactement $S$ collisions de la fonction $g_{\gamma}$. Grâce aux propriétés de la méthode PCS, l'extraction de ces $S$ collisions s'effectue en un temps proportionnel à $2^{n/2} \cdot S^{1/2}$. 
+
+La question centrale devient alors de déterminer combien de lots successifs doivent être générés pour détecter les différentielles à haute probabilité ciblées. Pour y répondre, il faut d'abord analyser les probabilités au sein d'un seul lot et évaluer ses chances de succès.
+
+Tout d'abord, nous savons qu'une vraie différentielle produit un « quatuor correct » (une collision utile) avec une probabilité de $p^2$. Dans un lot contenant $S$ collisions quelconques, l'espérance de trouver une collision liée à l'une de ces différentielles réelles est donc de $S \cdot p^2$. Cependant, pour éviter les faux positifs, l'algorithme ne se contente pas d'une seule bonne collision. Il exige d'en trouver deux au sein du même lot, qui suggèrent exactement la même différence d'entrée-sortie $(\alpha, \beta)$. En probabilités, lorsque l'espérance d'un événement rare est $\lambda = S \cdot p^2$, la probabilité que cet événement se produise au moins deux fois est proportionnelle à $\lambda^2$. La probabilité de succès pour un lot entier est donc d'environ :
+\begin{equation*}
+    P(\text{succès d'un lot}) \approx (S \cdot p^2)^2 = S^2 \cdot p^4
+\end{equation*}
+
+Puisque la probabilité d'obtenir ce résultat avec un seul lot est de $S^2 \cdot p^4$, il faudra, en moyenne, répéter le tirage un nombre de fois équivalent à l'inverse de cette probabilité pour obtenir un succès. Le nombre de lots nécessaires est donc de $S^{-2} \cdot p^{-4}$.
+
+La complexité temporelle globale s'obtient logiquement en multipliant le temps passé à générer un seul lot par le nombre de lots nécessaires :
+\begin{equation*}
+    \text{Temps total} = \underbrace{\tilde{\mathcal{O}}(2^{n/2}S^{1/2})}_{\text{Temps pour } 1 \text{ lot}} \times \underbrace{S^{-2}p^{-4}}_{\text{Nombre de lots}} = \tilde{\mathcal{O}}(2^{n/2}p^{-4}S^{-3/2})
+\end{equation*}
+
+L'intérêt de cette formule apparaît lorsque l'on fixe la limite de mémoire allouée à $S = \tilde{\mathcal{O}}(p^{-2})$. En injectant cette valeur dans l'équation de la complexité temporelle, les exposants s'annulent :
+\begin{equation*}
+    \text{Temps total} = \tilde{\mathcal{O}}\left(2^{n/2} p^{-4} (p^{-2})^{-3/2}\right) = \tilde{\mathcal{O}}\left(2^{n/2} p^{-4} p^3\right) = \tilde{\mathcal{O}}(2^{n/2}p^{-1})
+\end{equation*}
+
+En fragmentant ainsi la recherche, l'algorithme retrouve exactement la même complexité temporelle que l'approche fondamentale, mais en ayant réduit la complexité spatiale d'un facteur important, passant de $2^{n/2}p^{-1}$ à seulement $p^{-2}$.
+
+\subsubsection{De la théorie à la pratique : Notre implémentation C++}
+
+Traduire cette théorie mathématique en un programme concret nécessite quelques adaptations. Notre implémentation, librement disponible sur notre dépôt GitHub public au sein du fichier \url{src/analysis/DifferentialSearch.cpp} via la fonction \texttt{run\allowbreak Memory\allowbreak Efficient\allowbreak Algorithm}, gère cette contrainte de manière dynamique tout en maximisant les performances du processeur.
+
+\paragraph{Le dimensionnement des lots ($K^2$ batches) :}
+Le programme calcule d'abord le $M_{ideal}$ de l'algorithme fondamental. Si cette valeur excède une limite de RAM stricte $M_{MAX}$ fixée par le système (par exemple 100 millions d'entrées, soit environ 2,3 Go), l'algorithme bascule en mode \textit{tradeoff}. La taille d'un lot est plafonnée à $M_{MAX}$, représentant un facteur de réduction $K = M_{ideal} / M_{MAX}$.
+Puisque le nombre de paires formées (et donc de collisions potentielles) évolue de manière quadratique selon le paradoxe des anniversaires, diviser la taille du tableau par $K$ fait chuter le nombre de collisions générées par lot d'un facteur $K^2$. Pour compenser cette perte et conserver le même taux de détection global, le programme exécute exactement $K^2$ lots avec des substituts $\gamma$ aléatoires différents.
+
+\paragraph{L'élimination de la table de hachage interne :}
+Pour accélérer le traitement interne d'un lot et économiser la mémoire allouée aux métadonnées des \texttt{std::unordered\_map}, notre programme utilise un simple tableau plat contigu (\texttt{std::vector}). Une fois le lot généré, le tableau est trié (\texttt{std::sort}) selon la valeur de $g_{\gamma}(x)$. Les collisions se retrouvent ainsi adjacentes en mémoire, ce qui permet de les extraire par un simple parcours linéaire (extrêmement rapide et \textit{cache-friendly}).
+
+\paragraph{Le Filtre de Fréquence global :}
+Le dernier défi consiste à compter les apparitions d'un candidat $(\alpha, \beta)$ à travers les différents lots, sans recréer le goulot d'étranglement lié à une structure de hachage globale. Pour résoudre ce problème, nous avons opté pour un \textbf{filtre de fréquence} (\textit{Frequency Filter}) pré-alloué de taille fixe (par exemple 1 Go).
+Lorsqu'une collision suggère une clé $(\alpha, \beta)$, celle-ci est hachée et modulo-indexée dans ce grand tableau d'octets. Le compteur de la case correspondante est incrémenté. Ce n'est que si cette case franchit le seuil d'acceptation de l'algorithme fondamental ($n/4$) que la véritable clé $(\alpha, \beta)$ est allouée dans une liste restreinte (\texttt{candidates\_to\_verify}). Cette liste finale, de très petite taille, est ensuite soumise à la phase de vérification classique.
+
+\subsubsection{Ouverture : La dépendance aux hypothèses}
+
+Grâce à cet algorithme de compromis, la détection de différentielles à haute probabilité devient réalisable sur du matériel standard, franchissant définitivement la barrière de la recherche exhaustive en $2^n$. 
+
+Cependant, il est crucial de noter qu'aussi bien l'algorithme fondamental que ses variantes (sans mémoire ou de compromis) reposent sur une hypothèse fondatrice : le comportement pseudo-aléatoire de la fonction substitut $g_{\gamma}$. En effet, l'évaluation des probabilités, le nombre de quatuors attendus et la répartition des collisions supposent que la primitive analysée ne présente pas de structures internes venant fausser ces statistiques.
+
+Si le chiffrement étudié possède des propriétés algébriques particulières qui empêchent $g_{\gamma}$ de se comporter comme une fonction aléatoire, les garanties mathématiques de détection s'effondrent. Cette dépendance aux hypothèses justifie la nécessité de concevoir un ultime filet de sécurité : un algorithme « pire cas » (\textit{Worst-Case Algorithm}). Bien que plus lourd, ce dernier doit être capable de retrouver ces propriétés statistiques sans formuler la moindre hypothèse sur le comportement structurel de la primitive étudiée.
+
+
 
 \end{document}
