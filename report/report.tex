@@ -107,8 +107,8 @@ Pour pouvoir exécuter cette recherche exhaustive efficacement sur des « chiffr
 Nous avons introduit trois optimisations majeures pour rendre l'algorithme praticable :
 
 \begin{enumerate}
-    \item \textbf{Pré-calcul des chiffrés (\textit{ftable}) :} Pour briser la complexité temporelle due aux appels répétés à la fonction d'évaluation, nous avons mis en place un compromis Temps/Mémoire (Time/Memory Trade-off). Nous chiffrons l'ensemble des $2^n$ messages possibles une seule fois au début de l'exécution et les stockons dans une \textit{Lookup Table} nommée \texttt{ftable}. Le calcul de $\beta$ devient alors une simple lecture en mémoire : \texttt{ftable[x] $\oplus$ ftable[x $\oplus$ $\alpha$]}.
-    \item \textbf{Filtrage à la volée (Génération de pDDT) :} En cryptanalyse différentielle, nous ne nous intéressons qu'aux différentielles à haute probabilité, qui traduisent une véritable faiblesse de la primitive. Si le chiffrement est un minimum bien conçu, la vaste majorité des entrées d'une DDT classique n'est constituée que de bruit statistique sans valeur exploitable. Notre algorithme s'aligne sur ce principe en prenant en paramètre un seuil de probabilité (\texttt{probabilityThreshold}) pour ne générer qu'une \textbf{DDT partielle (pDDT)}. L'algorithme utilise un tableau temporaire de compteurs de taille $2^n$ et, à la fin de chaque itération sur $\alpha$, ne sauvegarde que les différentielles atteignant la probabilité requise. En éliminant tout ce bruit inutile, l'empreinte mémoire de la structure finale est drastiquement réduite, évitant ainsi le stockage d'une matrice en $\mathcal{O}(2^{2n})$.
+    \item \textbf{Pré-calcul des chiffrés :} Pour réduire la surcharge temporelle liée aux appels répétés à la fonction de chiffrement, nous avons mis en place un compromis temps/mémoire (\textit{time/memory trade-off}). L'ensemble des $2^n$ messages possibles est évalué une seule fois au début de l'exécution, et les résultats sont stockés dans une table de correspondance globale (ou \textit{lookup table}), que nous noterons $T$. Le calcul de la différence de sortie $\beta$ se résume alors à deux simples accès mémoire directs suivis d'une disjonction exclusive : $T[x] \oplus T[x \oplus \alpha]$.
+    \item \textbf{Filtrage à la volée (Génération de pDDT) :} En cryptanalyse différentielle, nous ne nous intéressons qu'aux différentielles à haute probabilité, qui traduisent une véritable faiblesse de la primitive. Si le chiffrement est un minimum bien conçu, la vaste majorité des entrées d'une DDT classique n'est constituée que de bruit statistique sans valeur exploitable. Notre algorithme s'aligne sur ce principe en prenant en paramètre un seuil de probabilité pour ne générer qu'une \textbf{DDT partielle (pDDT)}. L'algorithme utilise un tableau temporaire de compteurs de taille $2^n$ et, à la fin de chaque itération sur $\alpha$, ne sauvegarde que les différentielles atteignant la probabilité requise. En éliminant tout ce bruit inutile, l'empreinte mémoire de la structure finale est drastiquement réduite, évitant ainsi le stockage d'une matrice en $\mathcal{O}(2^{2n})$.
     \item \textbf{Parallélisation (OpenMP) :} L'itération principale parcourant les différences $\alpha$ fait l'objet d'une parallélisation. Chaque thread CPU alloue son propre sous-tableau de compteurs pour éviter les accès concurrents, ce qui divise drastiquement le temps d'exécution sur les architectures multi-cœurs.
 \end{enumerate}
 
@@ -150,8 +150,8 @@ Bien que très efficace sur des chiffrements jouets, cette implémentation se he
 Lorsque la taille du bloc menace les capacités matérielles, l'algorithme doit être adapté en sacrifiant la vitesse d'exécution pour préserver la mémoire :
 \begin{itemize}
     \item \textbf{Suppression du pré-calcul (Évaluation à la volée) :} C'est la solution la plus radicale pour sauver la RAM. En supprimant totalement l'\texttt{ftable}, l'algorithme ne stocke plus rien au préalable. Il calcule $F(x)$ et $F(x \oplus \alpha)$ à chaque itération. L'empreinte spatiale redevient minime, mais le temps d'exécution explose (la complexité temporelle repassant à son maximum quadratique).
-    \item \textbf{Désactiver la parallélisation :} Une option d'allègement consiste à repasser en mode séquentiel. On évite ainsi l'allocation multiple des grands tableaux de compteurs (\texttt{counts}) par les différents threads CPU.
-    \item \textbf{Nettoyage à la volée (\textit{flush \& clear}) :} Au lieu de stocker toutes les différentielles valides en mémoire dans une unique structure de résultats finale, l'algorithme affiche immédiatement sur la sortie standard (stdout) les paires trouvées pour un $\alpha$ donné, puis vide et réinitialise sa mémoire avant de passer au $\alpha$ suivant.
+    \item \textbf{Désactiver la parallélisation :} Une option d'allègement consiste à repasser en mode séquentiel. On évite ainsi l'allocation multiple des grands tableaux de compteurs par les différents threads CPU.
+    \item \textbf{Nettoyage à la volée (\textit{flush \& clear}) :} Au lieu de stocker toutes les différentielles valides en mémoire dans une unique structure de résultats finale, l'algorithme affiche immédiatement sur la sortie standard les paires trouvées pour un $\alpha$ donné, puis vide et réinitialise sa mémoire avant de passer au $\alpha$ suivant.
 \end{itemize}
 
 \subsection{L'Algorithme de Recherche Standard : Une approche statistique}
@@ -191,7 +191,7 @@ Dans notre exemple, cette probabilité de faux signal chute à environ $2^{-99}$
 
 \subsubsection{Analyse de l'implémentation C++ et Limites}
 
-Notre implémentation, disponible dans le fichier \url{src/analysis/DifferentialSearch.cpp}, exploite le multi-threading via OpenMP pour paralléliser l'itération sur les différences $\alpha$. Contrairement à l'algorithme exhaustif, l'utilisation de \texttt{std::\allowbreak unordered\_map} permet de ne stocker que les différences rencontrées, optimisant ainsi la mémoire vive.
+Notre implémentation, disponible dans le fichier \url{src/analysis/DifferentialSearch.cpp}, parallélise l'itération sur les différences d'entrée $\alpha$ en répartissant la charge sur plusieurs fils d'exécution. Contrairement à l'algorithme exhaustif, l'utilisation d'une table de hachage dynamique permet de ne conserver que les différences de sortie effectivement rencontrées, optimisant ainsi considérablement l'empreinte mémoire.
 
 Toutefois, ce moteur reste limité par le facteur $2^n$. Pour un chiffrement comme \textbf{Speck 64/128}, l'algorithme doit itérer, à minima, $2^{64}$ fois, ce qui est prohibitif sur un ordinateur personnel.
 
@@ -199,7 +199,7 @@ C'est cette barrière qui justifie l'introduction de l'algorithme probabiliste p
 
 \subsection{L'Algorithme Fondamental : L'exploitation des collisions}
 
-Pour franchir la barrière du $2^n$, cet algorithme délaisse l'approche par différence d'entrée fixe pour s'appuyer sur la \textbf{différenciation par substitut} (\textit{surrogate differentiation}). L'objectif est de détecter toutes les différentielles $\alpha \rightarrow \beta$ de probabilité $p$ avec une complexité temporelle et spatiale réduite à l'ordre de $\tilde{O}(2^{n/2} \cdot p^{-1})$.
+Pour franchir la barrière du $2^n$, cet algorithme délaisse l'approche par différence d'entrée fixe pour s'appuyer sur la \textbf{différenciation par substitut}. L'objectif est de détecter toutes les différentielles $\alpha \rightarrow \beta$ de probabilité $p$ avec une complexité temporelle et spatiale réduite à l'ordre de $\tilde{O}(2^{n/2} \cdot p^{-1})$.
 
 \subsubsection{Le concept de Différenciation par Substitut}
 
@@ -289,7 +289,7 @@ Pour qu'un tel faux positif soit validé, il faudrait qu'il produise plus de $n/
 
 Le pseudo-code détaillé de cet algorithme fondamental est fourni à la page 9 de l'article. Nous l'avons intégralement implémenté dans notre programme sous la fonction \texttt{run\allowbreak Fundamental\allowbreak Algorithm}, dont le code source C++ est librement accessible sur notre dépôt GitHub public, au sein du fichier \url{src/analysis/DifferentialSearch.cpp}.
 
-Grâce à cette approche exploitant la différenciation par substitut, la complexité temporelle de la recherche est drastiquement abaissée à $\mathcal{O}(n \cdot 2^{n/2} \cdot p^{-1})$. Toutefois, cette version se heurte à une contrainte matérielle majeure : \textbf{l'empreinte mémoire}. Le stockage de la table de hachage (\texttt{std::unordered\_map}) pour les $M$ évaluations devient extrêmement prohibitif à mesure que la taille du bloc $n$ augmente ou que le seuil de probabilité $p$ diminue.
+Grâce à cette approche exploitant la différenciation par substitut, la complexité temporelle de la recherche est drastiquement abaissée à $\mathcal{O}(n \cdot 2^{n/2} \cdot p^{-1})$. Toutefois, cette version se heurte à une contrainte matérielle majeure : \textbf{l'empreinte mémoire}. Le maintien en mémoire d'une table de hachage globale pour stocker les $M$ évaluations devient extrêmement prohibitif à mesure que la taille du bloc $n$ augmente ou que le seuil de probabilité $p$ diminue.
 
 Pour illustrer théoriquement ce « mur de la RAM », calculons l'espace mémoire brut requis pour analyser un chiffrement aux paramètres pourtant modestes, tel que Speck 32/64 ($n=32$), avec un seuil de probabilité $p=2^{-13}$. Le nombre de messages $M$ à évaluer et à stocker en phase de détection s'élève à :
 \begin{equation*}
@@ -309,7 +309,7 @@ Cette limitation physique absolue justifie la nécessité de recourir à des var
 
 Pour pallier le problème rédhibitoire de l'empreinte spatiale de l'algorithme fondamental, les auteurs présentent à la page 13 de leur article une variante dite « sans mémoire » (\textit{memoryless}). Cette approche permet de ramener la consommation de mémoire vive à une constante $\mathcal{O}(1)$, éliminant de facto le « mur de la RAM ».
 
-Pour réussir ce tour de force, l'algorithme abandonne complètement la génération d'un large échantillon stocké dans une table de hachage. À la place, il utilise l'algorithme de détection de cycles de Pollard (le fameux $\rho$ de Pollard) pour trouver des collisions dans la fonction $g_{\gamma}$ à la volée, une par une. Chaque fois qu'une collision est détectée, la différence $(\alpha, \beta)$ correspondante est immédiatement extraite et soumise à la phase de vérification exhaustive. L'algorithme ne stocke aucun historique.
+Pour réussir ce tour de force, l'algorithme abandonne complètement la génération d'un large échantillon stocké dans une table de hachage. À la place, il utilise l'algorithme de détection de cycles de Pollard pour trouver des collisions dans la fonction $g_{\gamma}$ à la volée, une par une. Chaque fois qu'une collision est détectée, la différence $(\alpha, \beta)$ correspondante est immédiatement extraite et soumise à la phase de vérification exhaustive. L'algorithme ne stocke aucun historique.
 
 Cependant, cette économie spatiale drastique se paie au prix fort sur le plan des performances. Puisque l'algorithme perd la vision globale offerte par le paradoxe des anniversaires sur un grand tableau, il doit tester aveuglément de très nombreuses collisions inutiles avant de tomber sur un quatuor correct. Plus précisément, il faut extraire en moyenne $\mathcal{O}(p^{-2})$ collisions de la fonction $g_{\gamma}$ pour obtenir une correspondance valide. La recherche d'une collision par la méthode de Pollard coûtant $\mathcal{O}(2^{n/2})$, la complexité temporelle globale grimpe à :
 \begin{equation*}
@@ -339,7 +339,7 @@ Et plus la probabilité $p$ recherchée est faible, plus ce gouffre temporel se 
 Comme nous venons de le voir, l'approche fondamentale sature la mémoire vive, tandis que l'approche sans mémoire s'avère rédhibitoirement lente. Pour surmonter ce dilemme, les auteurs proposent en annexe de leur article d'exploiter la mémoire disponible (notée $S$) de façon stratégique pour concevoir des algorithmes de compromis (\textit{Tradeoffs}). Ils décrivent plus précisément deux variantes distinctes, adaptées à différentes capacités matérielles :
 
 \begin{itemize}
-    \item \textbf{Le Premier Compromis (Faible mémoire) :} Il s'agit d'une extension de l'algorithme dit « sans mémoire » (\textit{memoryless}). Conçu pour des environnements où l'espace $S$ est extrêmement restreint, il trouve un petit nombre de collisions et les teste toutes de manière systématique. Cette phase de vérification exhaustive alourdit considérablement la complexité temporelle (ajoutant un terme en $\tilde{\mathcal{O}}(p^{-3})$), le rendant sous-optimal sur des machines classiques.
+    \item \textbf{Le Premier Compromis (Faible mémoire) :} Il s'agit d'une extension de l'algorithme dit « sans mémoire ». Conçu pour des environnements où l'espace $S$ est extrêmement restreint, il trouve un petit nombre de collisions et les teste toutes de manière systématique. Cette phase de vérification exhaustive alourdit considérablement la complexité temporelle (ajoutant un terme en $\tilde{\mathcal{O}}(p^{-3})$), le rendant sous-optimal sur des machines classiques.
     \item \textbf{Le Second Compromis (Mémoire modérée) :} Il s'agit d'une extension de l'algorithme fondamental. Conçu pour des valeurs de $S$ plus larges, il élimine la coûteuse phase de test systématique en cherchant directement des collisions multiples pour filtrer le bruit en amont.
 \end{itemize}
 
@@ -381,11 +381,11 @@ Le programme calcule d'abord le $M_{ideal}$ de l'algorithme fondamental. Si cett
 Puisque le nombre de paires formées (et donc de collisions potentielles) évolue de manière quadratique selon le paradoxe des anniversaires, diviser la taille du tableau par $K$ fait chuter le nombre de collisions générées par lot d'un facteur $K^2$. Pour compenser cette perte et conserver le même taux de détection global, le programme exécute exactement $K^2$ lots avec des substituts $\gamma$ aléatoires différents.
 
 \paragraph{L'élimination de la table de hachage interne :}
-Pour accélérer le traitement interne d'un lot et économiser la mémoire allouée aux métadonnées des \texttt{std::unordered\_map}, notre programme utilise un simple tableau plat contigu (\texttt{std::vector}). Une fois le lot généré, le tableau est trié (\texttt{std::sort}) selon la valeur de $g_{\gamma}(x)$. Les collisions se retrouvent ainsi adjacentes en mémoire, ce qui permet de les extraire par un simple parcours linéaire (extrêmement rapide et \textit{cache-friendly}).
+Pour accélérer le traitement d'un lot et économiser la surcharge mémoire liée aux métadonnées des tables de hachage dynamiques, le programme stocke temporairement les évaluations dans un simple tableau plat et contigu. Une fois le lot entièrement généré, ce tableau est trié en place selon la valeur de la fonction $g_{\gamma}(x)$. Par conséquent, toutes les collisions se retrouvent mécaniquement adjacentes en mémoire. Il suffit alors d'effectuer un unique parcours linéaire du tableau pour les identifier et extraire les candidats. Cette approche s'avère non seulement très économe en espace, mais également extrêmement rapide car elle maximise l'utilisation de la mémoire cache du processeur.
 
 \paragraph{Le Filtre de Fréquence global :}
 Le dernier défi consiste à compter les apparitions d'un candidat $(\alpha, \beta)$ à travers les différents lots, sans recréer le goulot d'étranglement lié à une structure de hachage globale. Pour résoudre ce problème, nous avons opté pour un \textbf{filtre de fréquence} (\textit{Frequency Filter}) pré-alloué de taille fixe (par exemple 1 Go).
-Lorsqu'une collision suggère une clé $(\alpha, \beta)$, celle-ci est hachée et modulo-indexée dans ce grand tableau d'octets. Le compteur de la case correspondante est incrémenté. Ce n'est que si cette case franchit le seuil d'acceptation de l'algorithme fondamental ($n/4$) que la véritable clé $(\alpha, \beta)$ est allouée dans une liste restreinte (\texttt{candidates\_to\_verify}). Cette liste finale, de très petite taille, est ensuite soumise à la phase de vérification classique.
+Lorsqu'une collision suggère une clé $(\alpha, \beta)$, celle-ci est hachée et modulo-indexée dans ce grand tableau d'octets. Le compteur de la case correspondante est incrémenté. Ce n'est que si cette case franchit le seuil d'acceptation de l'algorithme fondamental ($n/4$) que la véritable clé $(\alpha, \beta)$ est allouée dans une liste restreinte. Cette liste finale, de très petite taille, est ensuite soumise à la phase de vérification classique.
 
 \subsubsection{Ouverture : La dépendance aux hypothèses}
 
@@ -395,6 +395,86 @@ Cependant, il est crucial de noter qu'aussi bien l'algorithme fondamental que se
 
 Si le chiffrement étudié possède des propriétés algébriques particulières qui empêchent $g_{\gamma}$ de se comporter comme une fonction aléatoire, les garanties mathématiques de détection s'effondrent. Cette dépendance aux hypothèses justifie la nécessité de concevoir un ultime filet de sécurité : un algorithme « pire cas » (\textit{Worst-Case Algorithm}). Bien que plus lourd, ce dernier doit être capable de retrouver ces propriétés statistiques sans formuler la moindre hypothèse sur le comportement structurel de la primitive étudiée.
 
+\subsection{L'Algorithme « Pire Cas » (\textit{Worst-Case}) : S'affranchir des heuristiques}
 
+Comme évoqué précédemment, les algorithmes fondamental et de compromis reposent sur un pari fort : l'hypothèse que les quatuors corrects se distribuent de manière aléatoire au sein de l'espace des messages. Cependant, si un concepteur malveillant introduit une porte dérobée (\textit{trapdoor}) dans le chiffrement, par exemple, en forçant les paires correctes à se concentrer dans un sous-espace linéaire restreint, l'algorithme fondamental échouera presque systématiquement, car il n'aura testé qu'un ou très peu de substituts $\gamma$. 
+
+Pour contrer cette menace et garantir une détection infaillible même face à une primitive conçue de manière adverse, les auteurs de l'article introduisent un algorithme dit « pire cas » Son principe est de ne plus s'en remettre à la chance sur le choix du substitut, mais de forcer statistiquement la découverte en multipliant les angles d'attaque de manière indépendante.
+
+\subsubsection{Paramétrage et seuils de validation}
+
+Au lieu d'utiliser un échantillon géant avec un seul substitut $\gamma$ (ou de chercher jusqu'à trouver un succès comme dans le tradeoff), l'algorithme \textit{Worst-Case} va tirer un nombre prédéfini et massif de substituts $\gamma$ différents, et générer un sous-échantillon pour chacun d'eux. La mécanique repose sur trois paramètres mathématiques interconnectés, rigoureusement calibrés pour isoler le signal du bruit sans formuler d'hypothèses sur la distribution.
+
+\paragraph{1. La taille du sous-échantillon $M$ :}
+La première différence majeure avec l'algorithme fondamental réside dans le dimensionnement de $M$. L'algorithme fondamental cherchait à accumuler suffisamment de collisions globales en une seule fois, exigeant un $M$ colossal. Ici, l'objectif d'un seul lot est beaucoup plus modeste : pour un substitut $\gamma$ donné, le lot doit être juste assez grand pour garantir la présence d'\textbf{au moins un} quatuor correct (ce qui constituera un « vote » pour ce $\gamma$).
+
+Pour garantir une forte probabilité de succès (fixée par les auteurs à $80\,\%$, soit $4/5$), ces derniers s'appuient sur la méthode probabiliste du second moment dans la démonstration de leur Lemme 1. Cette méthode indique que pour atteindre le seuil de $4/5$, l'espérance mathématique du nombre de quatuors corrects doit être d'au moins $8$. Sachant que cette espérance se calcule par $E = \frac{M^2}{2} \cdot 2^{-n} \cdot p$, on peut en déduire la taille optimale du lot :
+\begin{equation*}
+    \frac{M^2}{2} \cdot 2^{-n} \cdot p = 8 \implies M^2 = 16 \cdot 2^n \cdot p^{-1} \implies M = 4 \cdot 2^{n/2} \cdot p^{-1/2}
+\end{equation*}
+C'est pourquoi $M$ évolue ici en $p^{-1/2}$ et non plus en $p^{-1}$, rendant chaque lot beaucoup plus léger à stocker en mémoire.
+
+\paragraph{2. Le seuil d'acceptation global ($0,28 \cdot S \cdot p$) :}
+À la fin du traitement d'un lot, si une différence $(\alpha, \beta)$ a été repérée, le substitut $\gamma$ donne « un vote » pour ce candidat (un seul vote maximum par $\gamma$, pour éviter qu'un sous-espace dense ne fausse le comptage). Le programme doit ensuite décider combien de votes sont nécessaires sur l'ensemble des itérations pour valider une différentielle. 
+
+Ce seuil est obtenu en calculant l'espérance des votes d'un vrai signal par rapport à un bruit statistique :
+\begin{itemize}
+    \item \textbf{Pour une vraie différentielle (probabilité $\ge p$) :} Comme établi par la taille de $M$, le lot a déjà une probabilité de $4/5$ de contenir une bonne paire initiale. La question est de savoir si la paire translatée par le substitut aléatoire $\gamma$ sera elle aussi correcte. Dans un scénario idéal, cette probabilité conditionnelle serait de $p$. Toutefois, pour garantir que l'algorithme fonctionne même dans le pire des cas (où un adversaire aurait biaisé la distribution), les auteurs démontrent mathématiquement que cette probabilité ne peut jamais descendre sous la borne stricte de $p/2$. La probabilité minimale qu'un lot génère un vote est donc le produit de ces deux étapes : $(4/5) \times (p/2) = 2p/5 = 0,40 \cdot p$. Sur $S$ itérations, on s'attend à récolter en moyenne $\mathbf{0,40 \cdot S \cdot p}$ votes.
+    \item \textbf{Pour une fausse différentielle (probabilité $\le p/10$) :} Ici, aucune paire n'est garantie par la taille du lot. La probabilité qu'une fausse piste forme un quatuor par pur hasard nécessite de valider les deux paires consécutivement, ce qui force à élever sa probabilité au carré. L'évaluation de l'espérance (qui dépend de $M^2$, introduisant ainsi un facteur $16$ puisque $M$ commence par $4$) donne un plafond de $16 \cdot p \cdot (1/10)^2 = 0,16 \cdot p$. L'espérance maximale des votes pour un bruit est donc de $\mathbf{0,16 \cdot S \cdot p}$.
+\end{itemize}
+Pour séparer le signal du bruit, le seuil d'acceptation est fixé exactement à la moyenne arithmétique entre ces deux espérances ($0,16$ et $0,40$) :
+\begin{equation*}
+    \text{Seuil} = \frac{0,40 + 0,16}{2} \cdot S \cdot p = \mathbf{0,28 \cdot S \cdot p}
+\end{equation*}
+
+\paragraph{3. Le nombre d'itérations $S$ :}
+Fixer une moyenne parfaite ne suffit pas : il faut répéter l'expérience un nombre de fois $S$ suffisamment grand pour se prémunir des fluctuations statistiques. Sachant qu'il existe $2^{2n}$ combinaisons possibles de fausses différentielles $(\alpha, \beta)$, la probabilité qu'une seule d'entre elles franchisse le seuil par erreur doit être infime (strictement inférieure à $2^{-2n}$). 
+
+Dans le Lemme 2 de l'article, les auteurs utilisent la \textbf{borne de Chernoff} pour évaluer cette probabilité d'erreur, qui s'exprime sous la forme exponentielle $e^{-\frac{S \cdot p}{50}}$.
+Afin de sécuriser le résultat face aux $2^{2n}$ fausses pistes, ils choisissent d'imposer un taux d'erreur encore plus strict, fixé à $e^{-4n}$ (soit environ $2^{-5,7n}$). Pour trouver le nombre d'itérations $S$ nécessaire, il suffit de résoudre l'égalité entre ces deux exposants :
+\begin{equation*}
+    \frac{S \cdot p}{50} = 4n \implies S \cdot p = 200n \implies S = \frac{200n}{p}
+\end{equation*}
+Le paramètre constant $200$ découle directement de cette contrainte de sécurité. En remplaçant $S$ dans notre équation de seuil, on obtient finalement la condition de validation implémentée dans notre code : un candidat est validé s'il obtient plus de $0,28 \cdot \left(\frac{200n}{p}\right) \cdot p = \mathbf{56n}$ votes.
+\subsubsection{Complexités théoriques et Implémentation}
+
+Cette robustesse absolue a un coût. La complexité temporelle globale de l'algorithme s'obtient en multipliant le nombre d'itérations $S$ par la taille du lot $M$ à évaluer à chaque fois :
+\begin{equation*}
+    \text{Temps} = \tilde{\mathcal{O}}(S \cdot M) = \tilde{\mathcal{O}}\left(p^{-1} \times 2^{n/2} p^{-1/2}\right) = \tilde{\mathcal{O}}(2^{n/2} p^{-3/2})
+\end{equation*}
+
+Par rapport à l'algorithme fondamental $\tilde{\mathcal{O}}(2^{n/2} p^{-1})$, cette approche pire cas subit un ralentissement d'un facteur $\tilde{\mathcal{O}}(p^{-1/2})$. En revanche, sa complexité spatiale est limitée au stockage de la table de hachage d'un seul lot $M$ à la fois, soit $\tilde{\mathcal{O}}(2^{n/2} p^{-1/2})$, ce qui représente un excellent compromis.
+
+Notre implémentation C++ de cette méthode, encapsulée dans la fonction \texttt{run\allowbreak Worst\allowbreak Case\allowbreak Algorithm}, exploite pleinement la nature indépendante des itérations $S$. La boucle principale gérant les différents substituts $\gamma$ a été parallélisée. Chaque thread alloue sa propre table de hachage temporaire pour analyser un sous-échantillon $M$. Il ne vient mettre à jour le grand compteur global des votes qu'à la fin de son évaluation. Une fois les $S$ itérations terminées, le programme applique le filtre final des $56n$ votes et exporte les différentielles certifiées.
+
+\subsubsection{Limites pratiques : Le cumul des contraintes}
+
+Bien que cette variante offre des garanties théoriques absolues de sécurité, elle cumule en pratique les défauts majeurs des deux algorithmes précédents : une forte consommation de RAM (héritée de l'algorithme fondamental) et une grande lenteur (héritée de l'approche sans mémoire). 
+
+En effet, le ralentissement théorique d'un facteur $p^{-1/2}$ et la nécessité de stocker $M$ messages en mémoire simultanément rendent l'exécution extrêmement lourde. Pour s'en rendre compte, reprenons notre exemple numérique sur le chiffrement Speck 32/64 ($n=32$) avec une probabilité $p = 2^{-13}$ :
+
+\begin{itemize}
+    \item \textbf{L'obstacle temporel :} Le facteur de ralentissement $p^{-1/2}$ vaut ici $\sqrt{2^{13}} \approx 90,5$. Cela signifie qu'une recherche qui prenait \textbf{1 minute} avec l'algorithme fondamental prendra ici \textbf{plus d'une heure et demie}.
+    \item \textbf{L'obstacle spatial (RAM) :} Pour ces paramètres, la taille d'un sous-échantillon $M$ atteint environ $23,7$ millions de messages. En pratique, une table de hachage pèse environ 32 octets par entrée en raison des métadonnées requises par la structure de données sous-jacente (gestion des collisions, pointeurs internes). Chaque fil d'exécution consomme donc près de $750$ Mo. Sur un processeur standard exécutant 8 fils en parallèle, l'algorithme accapare instantanément \textbf{6 Go de mémoire vive} pour analyser un simple chiffrement « jouet » de 32 bits.
+\end{itemize}
+
+Une piste d'amélioration théorique (non implémentée dans nos travaux) consisterait à appliquer la méthode de recherche de collisions parallèles (PCS) au sein même de cet algorithme « pire cas », à l'instar de ce qui a été fait pour le compromis temps/mémoire. Cela permettrait d'éliminer le stockage direct des $M$ messages dans des tables de hachage et réduirait drastiquement l'empreinte spatiale. Néanmoins, bien que le problème de la RAM puisse être atténué par cette astuce, la barrière temporelle imposée par la complexité en $\tilde{\mathcal{O}}(2^{n/2} p^{-3/2})$ resterait un obstacle infranchissable pour analyser des chiffrements avec des tailles de blocs standards ($n \ge 64$).
+
+\subsection{Choix d'implémentation : Optimisation pour les blocs de 32 bits}
+
+Tout au long du développement de nos algorithmes, nous avons dû faire des choix architecturaux pour maximiser la vitesse d'exécution et minimiser l'empreinte mémoire. L'une de nos optimisations principales concerne le stockage et l'indexation des candidats différentiels $(\alpha, \beta)$.
+
+Dans les algorithmes de recherche de collisions, le programme doit constamment stocker, chercher et compter les occurrences des couples d'entrée-sortie. Représenter ces informations sous forme de paires d'objets distincts exigerait des fonctions de hachage complexes, ce qui introduirait une surcharge de calcul non négligeable à l'échelle de millions d'accès mémoire par seconde.
+
+Pour contourner ce problème et accélérer les traitements, nous avons opté pour une technique de concaténation binaire. Le principe consiste à fusionner la différence d'entrée $\alpha$ et la différence de sortie $\beta$ au sein d'un seul et unique entier non signé de 64 bits. Mathématiquement, cette fusion s'opère en décalant les bits de $\alpha$ vers la gauche pour les placer sur la moitié forte de l'entier, puis en appliquant une disjonction logique (\text{OU} binaire) avec $\beta$ sur la moitié faible :
+\begin{equation*}
+    \text{Clé globale (64 bits)} = (\alpha \ll 32) \lor \beta
+\end{equation*}
+
+En utilisant cette clé numérique unique, le comptage des candidats devient extrêmement rapide. Un tel entier est en effet nativement et parfaitement pris en charge par les registres du processeur et par les algorithmes de hachage internes, garantissant des performances d'indexation optimales.
+
+Cependant, cette optimisation matérielle induit une limite structurelle stricte : puisque l'entier global fait 64 bits, il ne peut contenir que deux valeurs de 32 bits maximum. Notre base de code est donc intrinsèquement optimisée pour l'analyse de chiffrements ayant une taille de bloc $n \le 32$ bits (à l'image de Speck 32/64). 
+
+Pour adapter notre programme à des chiffrements aux standards actuels ($n = 64$ ou $n = 128$ bits), il faudrait abandonner cette optimisation au profit d'entiers beaucoup plus larges (comme des types de 128 ou 256 bits) ou revenir à l'utilisation de paires structurelles. Dans les deux cas, cela impacterait mécaniquement l'empreinte mémoire et la vitesse d'exécution brute de la recherche.
 
 \end{document}
