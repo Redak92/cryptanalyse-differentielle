@@ -1,11 +1,8 @@
 #include "SPN.h"
 
-SPN::SPN(const Key master_key, const uint8_t *sbox, const uint8_t *inv_sbox, int chunk_size, const int rounds)
+SPN::SPN(const Key master_key, const int rounds)
     : master_key(master_key),
-      num_rounds(rounds),
-      sbox_chunk_size(chunk_size),
-      sbox_table(sbox),
-      inv_sbox_table(inv_sbox) {
+      num_rounds(rounds) {
     scheduleKeys();
 }
 
@@ -44,11 +41,12 @@ Block SPN::inv_permutate(const Block message) {
 
 Block SPN::applySbox(const Block data, const uint8_t *table) const {
     Block result = 0;
-    const Block mask = (1ULL << sbox_chunk_size) - 1;
-    const int num_chunks = 16 / sbox_chunk_size;
+    const int chunk_size = 4;
+    const Block mask = 0xF;
+    const int num_chunks = 4;
 
     for (int i = 0; i < num_chunks; ++i) {
-        const int shift = i * sbox_chunk_size;
+        const int shift = i * chunk_size;
         const uint16_t extract = (data >> shift) & mask;
         result |= (static_cast<Block>(table[extract]) << shift);
     }
@@ -61,7 +59,7 @@ Block SPN::encrypt(const Block plaintext) const {
 
     for (int i = 0; i < num_rounds; i++) {
         result ^= round_keys.at(i);
-        result = applySbox(result, sbox_table);
+        result = applySbox(result, SBOX_ARRAY);
         result = permutate(result);
     }
 
@@ -75,7 +73,7 @@ Block SPN::decrypt(const Block ciphertext) const {
 
     for (int i = num_rounds - 1; i >= 0; i--) {
         result = inv_permutate(result);
-        result = applySbox(result, inv_sbox_table);
+        result = applySbox(result, INVERSE_SBOX_ARRAY);
         result ^= round_keys.at(i);
     }
 
