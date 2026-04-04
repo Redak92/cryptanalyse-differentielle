@@ -477,4 +477,30 @@ Cependant, cette optimisation matérielle induit une limite structurelle stricte
 
 Pour adapter notre programme à des chiffrements aux standards actuels ($n = 64$ ou $n = 128$ bits), il faudrait abandonner cette optimisation au profit d'entiers beaucoup plus larges (comme des types de 128 ou 256 bits) ou revenir à l'utilisation de paires structurelles. Dans les deux cas, cela impacterait mécaniquement l'empreinte mémoire et la vitesse d'exécution brute de la recherche.
 
+\subsection{Validation expérimentale et résolution matérielle}
+
+Pour valider notre implémentation, nous avons entrepris de reproduire les résultats expérimentaux de l'article de référence (Section 2.5). L'objectif était de redécouvrir de manière automatisée la meilleure caractéristique différentielle sur 5 tours de Speck 32/64. L'article identifie le couple suivant, dont la probabilité théorique est de l'ordre de $p \approx 2^{-9}$ :
+$$ (0\text{x}0211, 0\text{x}0a04) \to (0\text{x}8000, 0\text{x}840a) $$
+
+Lors de nos premières exécutions avec l'algorithme fondamental, nous nous sommes rapidement heurtés à des limites matérielles. Pour atteindre une probabilité de $2^{-9}$, la taille de l'échantillon d'évaluation $M$ s'élevait à environ 189 millions de messages. Le maintien d'une table de hachage pour un tel volume a entraîné une surcharge massive de la mémoire vive, due à la taille des données nécessaires à la gestion des collisions internes de la structure. Cela a provoqué la saturation de la mémoire et l'arrêt du programme.
+
+Dans un premier temps, nous avons tenté de contourner ce problème d'allocation en remplaçant la table de hachage par un simple tableau plat et contigu. L'idée était d'évaluer le lot, de trier le tableau, puis d'en extraire les collisions par un parcours linéaire. Si cette approche s'est révélée très économe en mémoire et parfaitement optimisée pour le cache processeur, elle modifiait la complexité temporelle et la logique originelle de l'algorithme. 
+
+C'est une relecture de l'Annexe A du papier qui nous a fourni la solution algorithmique adéquate : l'algorithme de compromis Temps/Mémoire. En implémentant cette variante, nous avons pu traiter les évaluations par lots limités à 100 millions de textes clairs. L'empreinte mémoire s'est ainsi stabilisée autour de 2,2 Go par lot, permettant au programme de s'exécuter jusqu'à son terme de manière stable.
+
+Afin de lisser la forte dépendance à la clé inhérente au chiffrement, l'algorithme a été exécuté sur un échantillon de 1000 clés générées aléatoirement. Cette campagne complète a nécessité un temps de calcul de 109 538 secondes (environ 30 heures).
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{figures/analyse_densite_speck_5tours.png} % Ajuster le chemin si nécessaire
+    \caption{Distribution de la densité de la probabilité différentielle sur 1000 clés (Speck 32/64, 5 tours). La modélisation confirme la convergence vers une loi normale centrée sur $p \approx 2^{-9}$.}
+    \label{fig:densite_speck_5t}
+\end{figure}
+
+Les données récoltées ont été modélisées sous forme de distribution de densité (voir Figure \ref{fig:densite_speck_5t}). Contrairement à un simple histogramme de comptage brut, la normalisation en densité contraint l'aire totale sous la courbe à une valeur de 1. Ce choix méthodologique permet de comparer rigoureusement la forme de notre distribution indépendamment de la taille de l'échantillon. Nous y avons superposé une estimation par noyau afin de modéliser visuellement le comportement continu théorique du chiffrement.
+
+L'analyse de ce graphique confirme empiriquement l'application du Théorème Central Limite (TCL). En considérant la probabilité de la caractéristique pour une clé aléatoire comme une variable aléatoire, notre échantillon massif démontre une convergence claire vers une loi normale $\mathcal{N}(\mu, \sigma^2)$. L'espérance mesurée se fixe à $\mu \approx 0,00197$, ce qui valide avec une excellente précision la probabilité théorique de $2^{-9}$ (soit $0,001953$) attendue par l'état de l'art.
+
+Cependant, une analyse plus fine de la variance révèle une particularité structurelle importante. Même si l'écart-type mesuré reste très restreint ($\sigma \approx 3,46 \cdot 10^{-4}$), l'échantillon indique que seules 608 des 1000 clés testées ont produit un signal atteignant notre seuil de détection. Les $39,2\,\%$ de clés restantes n'ont pas disparu : elles constituent la queue de distribution gauche (les probabilités inférieures à $2^{-9}$), coupée de notre graphique par le filtre d'acceptation de l'algorithme. Ce phénomène met en évidence l'existence d'une proportion significative de «~clés fortes~». Pour ces dernières, la propagation de cette différentielle spécifique est atténuée, illustrant la dépendance à la clé de l'algorithme Speck sur un nombre restreint de tours.
+
 \end{document}
