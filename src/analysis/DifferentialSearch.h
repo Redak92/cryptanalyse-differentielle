@@ -42,5 +42,8 @@ public:
     // Complexité temps  : O(2^{n/2} * p^-1) identique à l'algo fondamental.
     // Complexité mémoire: O(p^-2) amélioration d'un facteur 2^{n/2}*p.
     // Remplace la grande hashmap globale par des batches PCS. 
-    [[nodiscard]] std::vector<DifferentialCandidate> runMemoryEfficientAlgorithm(double probabilityThreshold) const;
+    [[nodiscard]] std::vector<DifferentialCandidate> runMemoryEfficientAlgorithm(
+        double probabilityThreshold, 
+        uint64_t maxBatchSize = 100000000
+    ) const;
 };
