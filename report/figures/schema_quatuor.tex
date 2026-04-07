@@ -1,0 +1,88 @@
+\begin{tikzpicture}[>=Stealth,
+    box/.style={draw, rectangle, minimum width=1.2cm, minimum height=0.8cm, font=\large},
+    xor/.style={draw, circle, inner sep=1pt, minimum size=0.5cm}
+]
+
+    % ==========================================
+    % BLOC GAUCHE : Calcul de g_gamma(x)
+    % ==========================================
+    \node (x) at (0,0) {$x$};
+    \node (xg) at (3,0) {$x \oplus \gamma$};
+
+    % Relation gamma (grise)
+    \draw[<->, thick, gray] (x) -- node[above] {$\gamma$} (xg);
+
+    % Chiffrements F
+    \node[box] (Fx) at (0,-2) {$F$};
+    \node[box] (Fxg) at (3,-2) {$F$};
+    \draw[->, thick] (x) -- (Fx);
+    \draw[->, thick] (xg) -- (Fxg);
+
+    % Sorties f
+    \node (fx) at (0,-4) {$f(x)$};
+    \node (fxg) at (3,-4) {$f(x \oplus \gamma)$};
+    \draw[->, thick] (Fx) -- (fx);
+    \draw[->, thick] (Fxg) -- (fxg);
+
+    % XOR et g_gamma
+    \node[xor] (xorL) at (1.5,-5.5) {$\oplus$};
+    \draw[->, thick] (fx) -- (xorL);
+    \draw[->, thick] (fxg) -- (xorL);
+
+    \node (gx) at (1.5,-6.5) {$g_{\gamma}(x)$};
+    \draw[->, thick] (xorL) -- (gx);
+
+    % Cadre logique gauche
+    \node[draw, UPSaclayPrune!60, dashed, thick, rounded corners, fit=(x) (xg) (gx), inner sep=0.4cm] {};
+
+    % ==========================================
+    % BLOC DROIT : Calcul de g_gamma(x \oplus \alpha)
+    % ==========================================
+    \node (xa) at (7,0) {$x \oplus \alpha$};
+    \node (xag) at (10,0) {$x \oplus \alpha \oplus \gamma$};
+
+    % Relation gamma (grise)
+    \draw[<->, thick, gray] (xa) -- node[above] {$\gamma$} (xag);
+
+    % Chiffrements F
+    \node[box] (Fxa) at (7,-2) {$F$};
+    \node[box] (Fxag) at (10,-2) {$F$};
+    \draw[->, thick] (xa) -- (Fxa);
+    \draw[->, thick] (xag) -- (Fxag);
+
+    % Sorties f
+    \node (fxa) at (7,-4) {$f(x \oplus \alpha)$};
+    \node (fxag) at (10,-4) {$f(x \oplus \alpha \oplus \gamma)$};
+    \draw[->, thick] (Fxa) -- (fxa);
+    \draw[->, thick] (Fxag) -- (fxag);
+
+    % XOR et g_gamma
+    \node[xor] (xorR) at (8.5,-5.5) {$\oplus$};
+    \draw[->, thick] (fxa) -- (xorR);
+    \draw[->, thick] (fxag) -- (xorR);
+
+    \node (gxa) at (8.5,-6.5) {$g_{\gamma}(x \oplus \alpha)$};
+    \draw[->, thick] (xorR) -- (gxa);
+
+    % Cadre logique droit
+    \node[draw, UPSaclayPrune!60, dashed, thick, rounded corners, fit=(xa) (xag) (gxa), inner sep=0.4cm] {};
+
+    % ==========================================
+    % RELATIONS TRANSVERSALES (alpha et beta bleues)
+    % ==========================================
+    % Alpha (en haut)
+    % La 1ère s'incurve vers le haut pour passer au dessus
+    \draw[<->, thick, blue!80!black] (x) to[bend left=20] node[above] {$\alpha$} (xa);
+    % La 2ème s'incurve vers le bas pour passer sous le texte (7,0) mais au dessus des boîtes F (-2)
+    \draw[<->, thick, blue!80!black] (xg) to[bend right=20] node[below] {$\alpha$} (xag);
+
+    % Beta (au milieu)
+    % La 1ère s'incurve vers le haut (passe entre F et f)
+    \draw[<->, thick, blue!80!black] (fx) to[bend left=20] node[above] {$\beta$} (fxa);
+    % La 2ème s'incurve vers le bas (passe entre f et les symboles XOR)
+    \draw[<->, thick, blue!80!black] (fxg) to[bend right=20] node[below] {$\beta$} (fxag);
+
+    % Collision finale (en bas)
+    \draw[<->, ultra thick, UPSaclayPrune] (gx) -- node[above, font=\bfseries] {Collision = 0} (gxa);
+
+\end{tikzpicture}
