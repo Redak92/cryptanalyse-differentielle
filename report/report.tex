@@ -14,6 +14,8 @@
 \usepackage[margin=2cm]{geometry} 
 \usepackage{booktabs}
 \usepackage{tikz}
+\usepackage{float}
+
 \usetikzlibrary{arrows.meta, positioning, calc, fit}
 
 \definecolor{UPSaclayPrune}{RGB}{99, 0, 60}
@@ -91,7 +93,7 @@
 
 La sécurité des communications numériques modernes repose en grande partie sur la robustesse des primitives de chiffrement symétrique. Pour garantir la confidentialité des données, ces algorithmes doivent se comporter comme des permutations parfaitement aléatoires. Dès lors, le travail du cryptanalyste consiste à déceler des failles dans cette conception en identifiant des propriétés statistiques qui s'écartent du hasard. Parmi les techniques les plus puissantes figure la cryptanalyse différentielle, introduite par Biham et Shamir à la fin des années 1980. Cette méthode analyse la propagation d'une différence d'entrée spécifique à travers les tours du chiffrement dans l'espoir d'observer une différence de sortie avec une probabilité anormalement élevée.
 
-Historiquement, la découverte de telles caractéristiques différentielles reposait sur l'évaluation systématique de vastes ensembles de textes clairs. L'approche triviale consiste à construire la table de distribution des différences (DDT) complète. Elle exige une complexité temporelle et spatiale de l'ordre de $2^{2n}$ (où $n$ est la taille du bloc). Si cette méthode est viable pour des chiffrements de taille réduite, elle se heurte à une limite physique liée à l'explosion combinatoire dès que l'on cible des blocs de 64 ou 128 bits. L'évaluation exhaustive devient alors physiquement impossible, car elle requiert des ressources qui dépassent les capacités des supercalculateurs mondiaux.
+Historiquement, la découverte de telles caractéristiques différentielles reposait sur l'évaluation systématique d'une pléthore de textes clairs. L'approche triviale consiste à construire la table de distribution des différences (DDT) complète. Elle exige une complexité temporelle et spatiale de l'ordre de $2^{2n}$ (où $n$ est la taille du bloc). Si cette méthode est viable pour des chiffrements de taille réduite, elle se heurte à une limite physique liée à l'explosion combinatoire dès que l'on cible des blocs de 64 ou 128 bits. L'évaluation exhaustive devient alors physiquement impossible, car elle requiert des ressources qui dépassent les capacités des supercalculateurs mondiaux.
 
 C'est dans ce contexte de limitation fondamentale que s'inscrivent les algorithmes de recherche probabilistes basés sur les collisions. En exploitant des propriétés mathématiques telles que la différenciation par substitut et le paradoxe des anniversaires, il est théoriquement possible de ramener cette complexité à l'ordre de $2^{n/2} \cdot p^{-1}$.
 
@@ -537,7 +539,7 @@ Une piste d'amélioration théorique (non implémentée dans nos travaux) consis
 \section*{Synthèse comparative des algorithmes}
 \addcontentsline{toc}{section}{Synthèse comparative des algorithmes}
 
-\begin{table}[htbp]
+\begin{table}[H]
     \centering
     \small
     \caption{Comparaison théorique des quatre variantes algorithmiques étudiées.}
@@ -577,40 +579,32 @@ Une piste d'amélioration théorique (non implémentée dans nos travaux) consis
 
 \section{Validation expérimentale et résolution matérielle}
 
-Pour valider notre implémentation, nous avons entrepris de reproduire les résultats expérimentaux de l'article de référence (Section 2.5). L'objectif était de redécouvrir de manière automatisée la meilleure caractéristique différentielle sur 5 tours de Speck 32/64. L'article identifie le couple suivant, dont la probabilité théorique est de l'ordre de $p \approx 2^{-9}$ :
+Pour valider notre implémentation, nous avons reproduit les résultats de l'article de référence (Section 2.5) en étudiant la meilleure caractéristique différentielle sur 5 tours de Speck 32/64 :
 $$ (0\text{x}0211, 0\text{x}0a04) \to (0\text{x}8000, 0\text{x}840a) $$
+La probabilité théorique attendue pour cette différentielle est d'environ $p \approx 2^{-9}$. 
 
-Lors de nos premières exécutions avec l'algorithme fondamental, nous nous sommes rapidement heurtés à des limites matérielles. Pour atteindre une probabilité de $2^{-9}$, la taille de l'échantillon d'évaluation $M$ s'élevait à environ 189 millions de messages. Le maintien d'une table de hachage pour un tel volume a entraîné une surcharge massive de la mémoire vive, due à la taille des données nécessaires à la gestion des collisions internes de la structure. Cela a provoqué la saturation de la mémoire et l'arrêt du programme.
-
-Dans un premier temps, nous avons tenté de contourner ce problème d'allocation en remplaçant la table de hachage par un simple tableau plat et contigu. L'idée était d'évaluer le lot, de trier le tableau, puis d'en extraire les collisions par un parcours linéaire. Si cette approche s'est révélée très économe en mémoire et parfaitement optimisée pour le cache processeur, elle modifiait la complexité temporelle et la logique originelle de l'algorithme. 
-
-C'est une relecture de l'Annexe A du papier qui nous a fourni la solution algorithmique adéquate : l'algorithme de compromis Temps/Mémoire. En implémentant cette variante, nous avons pu traiter les évaluations par lots limités à 100 millions de textes clairs. L'empreinte mémoire s'est ainsi stabilisée autour de 2,2 Go par lot, permettant au programme de s'exécuter jusqu'à son terme de manière stable.
-
-Afin de lisser la forte dépendance à la clé inhérente au chiffrement, l'algorithme a été exécuté sur un échantillon de 1000 clés générées aléatoirement. Cette campagne complète a nécessité un temps de calcul de 109 538 secondes (environ 30 heures).
+Atteindre ce seuil avec l'algorithme fondamental nécessiterait de stocker environ 189 millions de messages, ce qui saturerait instantanément la mémoire de nos machines. Pour contourner ce problème, nous avons utilisé l'algorithme de compromis Temps/Mémoire. La recherche a été divisée en lots limités à 100 millions de textes clairs (soit environ 2,2 Go de RAM). Pour vérifier si ce résultat dépendait de la clé, le programme a tourné sur un échantillon de 1000 clés générées aléatoirement, ce qui a pris environ 30 heures de calcul.
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.9\textwidth]{figures/analyse_densite_speck_5tours.png} % Ajuster le chemin si nécessaire
-    \caption{Distribution de la densité de la probabilité différentielle sur 1000 clés (Speck 32/64, 5 tours). La modélisation confirme la convergence vers une loi normale centrée sur $p \approx 2^{-9}$.}
+    \includegraphics[width=0.9\textwidth]{figures/analyse_globale_speck_5tours.png}
+    \caption{Distribution globale de la probabilité différentielle sur 1000 clés (Speck 32/64, 5 tours). Le graphique met en évidence un nombre important de faux négatifs (392 clés non détectées) contrastant avec la moyenne des clés validées, centrée sur $p \approx 2^{-9}$.}
     \label{fig:densite_speck_5t}
 \end{figure}
 
-Les données récoltées ont été modélisées sous forme de distribution de densité (voir Figure \ref{fig:densite_speck_5t}). Contrairement à un simple histogramme de comptage brut, la normalisation en densité contraint l'aire totale sous la courbe à une valeur de 1. Ce choix méthodologique permet de comparer rigoureusement la forme de notre distribution indépendamment de la taille de l'échantillon. Nous y avons superposé une estimation par noyau afin de modéliser visuellement le comportement continu théorique du chiffrement.
+Les résultats, présentés sur la Figure~\ref{fig:densite_speck_5t}, montrent un comportement inattendu. D'un côté, pour les 608 clés qui ont dépassé le seuil de détection, la moyenne mesurée est de $\mu \approx 0,00197$, ce qui confirme très bien la probabilité de $2^{-9}$ donnée par la littérature. De l'autre côté, l'algorithme n'a trouvé aucune collision pour les 392 clés restantes, affichant une probabilité de $0$. 
 
-L'analyse de ce graphique confirme empiriquement l'application du Théorème Central Limite (TCL). En considérant la probabilité de la caractéristique pour une clé aléatoire comme une variable aléatoire, notre échantillon massif démontre une convergence claire vers une loi normale $\mathcal{N}(\mu, \sigma^2)$. L'espérance mesurée se fixe à $\mu \approx 0,00197$, ce qui valide avec une excellente précision la probabilité théorique de $2^{-9}$ (soit $0,001953$) attendue par l'état de l'art.
+Face à ce grand nombre de faux négatifs ($39,2\,\%$ de l'échantillon), nous avons cherché à savoir si ce problème venait du chiffrement lui-même (certaines clés bloquant la différence) ou s'il s'agissait d'un défaut de notre outil de recherche. 
 
-Cependant, une analyse plus fine de la variance révèle une particularité structurelle importante. Par conception, notre algorithme filtre le bruit et ne sauvegarde que les différentielles franchissant le seuil d'acceptation (fixé ici à $n/4 = 8$ collisions). Ce filtre correspond à une probabilité minimale détectable d'environ $p_{min} \approx 0,00156$.
+Pour le vérifier, nous avons pris un groupe de contrôle de 100 clés non détectées ($p=0$) et de 100 clés bien détectées ($p>0$). Nous les avons testées directement : pour chaque clé, $2^{20}$ paires aléatoires ont été générées et chiffrées pour calculer la probabilité exacte, sans utiliser la méthode des collisions et ses filtres. Les résultats de ce test sont clairs : les 200 clés affichent toutes une probabilité proche de $0,0019$. La caractéristique existe donc bien, quelle que soit la clé.
 
-Sur notre échantillon, seules 608 des 1000 clés testées ont produit un signal dépassant ce seuil. En calculant les statistiques uniquement sur ces 608 clés retenues, ce qui correspond aux seules données visibles en sortie de programme, on obtient une moyenne $\mu_{mesur\acute{e}} = 0,001973$ et un écart-type $\sigma_{mesur\acute{e}} = 3,46 \cdot 10^{-4}$.
+Le fait que notre algorithme par compromis rate ces 392 clés souligne les limites de cette méthode. Plusieurs raisons peuvent expliquer ces échecs.
 
-En supposant naïvement que la probabilité différentielle suit une distribution gaussienne classique $\mathcal{N}(\mu_{mesur\acute{e}}, \sigma_{mesur\acute{e}}^2)$, on peut estimer la proportion de clés qui auraient dû statistiquement échouer (c'est-à-dire tomber sous $p_{min}$). Le calcul donne :
-$$ P(P < p_{min}) = \Phi\left(\frac{0,00156 - 0,001973}{3,46 \cdot 10^{-4}}\right) = \Phi(-1,19) \approx 11,7\,\% $$
+La première explication réside dans les limites de l'hypothèse d'indépendance. L'algorithme suppose en effet que la fonction $g_{\gamma}$ se comporte de manière aléatoire. Puisque l'algorithme de compromis limite la recherche à quelques lots, il n'utilise qu'un nombre très restreint de substituts $\gamma$ différents. Il suffit alors que ces quelques substituts s'accordent mal avec la clé testée pour qu'aucune collision ne se forme, conduisant l'algorithme à passer complètement à côté du résultat.
 
-L'écart important entre ce taux d'échec théorique ($11,7\,\%$) et les observations expérimentales ($39,2\,\%$, correspondant aux 392 clés n'ayant renvoyé aucun résultat) contredit l'hypothèse d'une distribution purement gaussienne. Le filtre de détection induit un biais de troncature : il ignore systématiquement les valeurs sous le seuil. 
+À cette contrainte théorique s'ajoute un manque de détails sur l'implémentation pratique. L'algorithme de compromis n'est abordé que de façon conceptuelle dans les annexes des travaux de Dinur et al. Les auteurs indiquent qu'il faut générer des lots successifs de collisions en modifiant le substitut $\gamma$ à chaque itération, mais la gestion concrète de la mémoire et le transfert des candidats d'un lot à l'autre ne sont pas formalisés en pseudo-code. Nos propres choix de programmation pour pallier ce manque ont donc pu introduire des biais de filtrage, éliminant par erreur de bons candidats. Pour s'affranchir de ces biais et garantir une détection certaine, il serait nécessaire d'utiliser l'algorithme de « pire cas », dont l'efficacité a été validée par les chercheurs de l'état de l'art grâce à l'évaluation massive de nombreux substituts $\gamma$. Cependant, comme nous l'avons établi précédemment, cette méthode exige des ressources matérielles beaucoup trop lourdes pour notre environnement de test.
 
-Pour quantifier ce biais, nous avons recalculé ces statistiques sur l'intégralité du jeu d'essai, en réintégrant les 392 clés non détectées avec une probabilité fixée à zéro. Cette analyse globale révèle une baisse significative de l'espérance à $\mu_{global} = 0,001200$, accompagnée d'un écart-type de $\sigma_{global} \approx 1,00 \cdot 10^{-3}$.
-
-Le décalage observé entre la moyenne mesurée par l'algorithme ($0,001973$) et la moyenne globale calculée ($0,001200$) met en évidence l'existence d'une proportion importante de clés pour lesquelles la structure interne de Speck atténue fortement la propagation de la caractéristique différentielle.
+Pour conclure, notre implémentation est parvenue à extraire la caractéristique de manière entièrement automatisée pour $60,8\,\%$ des clés, alors même que notre vérification manuelle a prouvé que la différentielle était présente dans l'intégralité des cas. Ce résultat illustre directement la complexité liée à l'implémentation pratique de tels algorithmes. Le passage de la théorie mathématique à un outil logiciel contraint par la mémoire impose des choix d'architecture qui se heurtent parfois à la réalité algébrique du chiffrement. Cela confirme la pertinence et la nécessité de l'algorithme de « pire cas » pour assurer une vérification systématique et fiable, bien que son coût matériel reste en pratique prohibitif.
 
 \subsection{Reproduction des résultats sur 6 tours de Speck}
 
@@ -649,25 +643,31 @@ Le fait que notre programme parvienne à extraire ce véritable optimum théoriq
 
 \section{Analyse comparative des performances sur SPN 16 bits}
 
-Afin d'évaluer l'efficacité relative des différentes stratégies de recherche, nous avons initialement mené une première série de tests en activant la parallélisation matérielle sur un chiffrement SPN jouet de 16 bits (3 tours, $p=2^{-7}$). Lors de cette étape exploratoire, nous avons observé un phénomène contre-intuitif : les deux algorithmes naïfs s'exécutaient nettement plus rapidement que les approches avancées par collisions. Ce paradoxe s'explique par une asymétrie d'implémentation. En effet, la structure en tableaux plats des algorithmes naïfs se parallélise de manière triviale, permettant d'exploiter toute la puissance multicoeur du processeur. À l'inverse, les algorithmes de collision reposent sur l'insertion dynamique de données dans des tables de hachage partagées. Cette opération est difficilement parallélisable sans introduire des mécanismes de synchronisation mémoire excessivement pénalisants. Ainsi, sur une si petite taille de bloc, l'optimisation matérielle bénéficiant exclusivement aux méthodes naïves masquait totalement la supériorité théorique de la complexité algorithmique des méthodes avancées.
+Afin d'évaluer l'efficacité des différentes stratégies de recherche, nous avons mené une campagne de tests sur un chiffrement SPN de 16 bits (3 tours, $p=2^{-7}$). Les évaluations ont été exécutées de manière strictement séquentielle sur un échantillon fixe de 500 clés aléatoires pour lisser les éventuelles variations matérielles et garantir la fiabilité des moyennes temporelles.
 
-Dans cette même démarche expérimentale, nous avons tenté d'inclure l'algorithme de pire cas à notre comparatif. De manière inattendue pour un chiffrement de seulement 16 bits, son exécution s'est révélée impraticable. La garantie de sécurité mathématique exigée par cet algorithme impose un nombre d'itérations colossal, défini par la constante $S = 200n/p$. La surcharge en temps de calcul et la saturation de la mémoire vive, induites par le maintien de gigantesques structures de contrôle pour croiser les données, nous ont contraints à l'exclure de nos mesures statistiques. Ce constat confirme que cette variante est un outil théorique lourd, inadapté à de simples évaluations de performance sur des blocs réduits.
+Par ailleurs, l'algorithme de « pire cas » a dû être exclu de ce comparatif. La garantie de sécurité mathématique qu'il offre impose un nombre d'itérations colossal ($S = 200n/p$), entraînant une surcharge temporelle et spatiale qui rend son exécution impraticable, même sur un bloc réduit de 16 bits. Les résultats des méthodes évaluées sont synthétisés dans le Tableau~\ref{tab:perf_spn16}.
 
-Afin d'évaluer la véritable efficacité mathématique des méthodes restantes à armes égales, nous avons fait le choix de désactiver toute parallélisation. Cette campagne finale a été exécutée de manière strictement séquentielle sur un échantillon fixe de 500 clés aléatoires. Notre démarche méthodologique s'appuie directement sur la loi des grands nombres : en calculant la moyenne cumulée à chaque itération, nous nous assurons que la moyenne empirique des temps d'exécution converge vers son espérance mathématique réelle. C'est la construction de ce graphique de convergence qui nous garantit d'isoler la performance brute des algorithmes, en lissant totalement les éventuels artefacts liés au système d'exploitation et la forte dépendance au choix de la clé. La Figure~\ref{fig:convergence_spn} illustre cette évolution en mode monothread.
-
-\begin{figure}[htbp]
+\begin{table}[htbp]
     \centering
-    \includegraphics[width=0.9\textwidth]{figures/convergence_benchmark.png}
-    \caption{Évolution de la convergence des temps moyens d'exécution pour les variantes de recherche différentielle (SPN 16 bits, exécution séquentielle stricte). La stabilisation des courbes valide l'application de la loi des grands nombres sur cet échantillon.}
-    \label{fig:convergence_spn}
-\end{figure}
+    \caption{Temps moyens d'exécution des algorithmes sur SPN 16 bits (moyenne sur 500 clés).}
+    \label{tab:perf_spn16}
+    \begin{tabular}{lc}
+        \toprule
+        \textbf{Algorithme} & \textbf{Temps moyen (secondes)} \\
+        \midrule
+        Naïf Exhaustif & 12,239 \\
+        Naïf Optimisé & 3,373 \\
+        Compromis Temps-Mémoire & 2,984 \\
+        Fondamental & 2,831 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
 
-L'analyse de la hiérarchie de ces nouvelles performances séquentielles permet de tirer plusieurs conclusions fondamentales. Sans l'avantage du calcul parallèle, l'algorithme naïf exhaustif s'effondre avec un temps moyen de 12,239~secondes. Il illustre parfaitement l'impossibilité d'une attaque par force brute à plus grande échelle : si le coût est déjà si pénalisant pour 16 bits, la croissance exponentielle de l'espace de recherche interdit toute application sur des chiffrements réels. De son côté, bien que l'algorithme naïf optimisé améliore drastiquement ce temps (3,373~s), il reste limité par son approche de recherche linéaire et son absence de structure de croisement de données.
+L'analyse de cette hiérarchie de performances confirme la pertinence des modèles théoriques. L'algorithme naïf exhaustif s'effondre logiquement avec un temps moyen de 12,239~secondes, illustrant l'impossibilité pratique d'une recherche par force brute à plus grande échelle. Si l'approche naïve optimisée divise ce temps par près de quatre (3,373~s), elle reste fondamentalement limitée par sa mécanique de recherche linéaire.
 
-En forçant cette exécution sur un seul cœur, les approches par collisions révèlent enfin leur supériorité théorique. L'algorithme fondamental (2,831~s) et sa variante de compromis temps-mémoire (2,984~s) s'imposent logiquement comme les solutions les plus performantes. Ce résultat valide empiriquement l'avantage de la complexité en $O(2^{n/2} \cdot p^{-1})$ permise par le paradoxe des anniversaires. On observe toutefois que la méthode de compromis est légèrement en retrait par rapport à l'algorithme fondamental pur. Cet écart est la conséquence directe de la surcharge logicielle induite par le découpage en lots successifs et les étapes de filtrage nécessaires pour réduire l'empreinte mémoire. Sur un bloc de 16 bits où la mémoire globale n'est pas limitante, l'algorithme fondamental classique reste l'option la plus directe.
+Les approches exploitant les collisions révèlent quant à elles pleinement leur supériorité. L'algorithme fondamental (2,831~s) s'impose comme la solution la plus performante, validant empiriquement l'avantage de la complexité en $\mathcal{O}(2^{n/2} \cdot p^{-1})$ permise par le paradoxe des anniversaires. 
 
-Enfin, on notera la remarquable stabilité des mesures obtenues. Après une phase de stabilisation lors des cent premières itérations, les courbes de convergence deviennent asymptotiques. Ce comportement visuel confirme définitivement notre méthodologie : l'échantillon de 500 exécutions est suffisamment dimensionné pour atteindre la convergence statistique. En somme, cette démarche expérimentale prouve que pour un attaquant, le véritable passage à l'échelle repose sur l'exploitation judicieuse des mathématiques structurelles plutôt que sur la seule puissance de calcul brute.
-
+On observe logiquement que la variante de compromis temps-mémoire (2,984~s) se place très légèrement en retrait. Cet écart s'explique par la surcharge logicielle (\textit{overhead}) induite par le découpage en lots successifs et la gestion continue des filtres. Sur une architecture de 16 bits où la quantité de RAM n'est pas un facteur limitant, l'algorithme fondamental pur demeure donc l'option la plus directe et la plus rapide.
 \section{Les limites de l'approche naïve face à Speck 32/64}
 
 Pour illustrer concrètement l'explosion combinatoire liée à l'augmentation de la taille du bloc, nous avons transposé nos expérimentations sur le chiffrement Speck 32/64. Afin de conserver des temps de calcul mesurables pour l'algorithme naïf optimisé, nous avons ciblé une caractéristique sur un nombre réduit de 3 tours, offrant une probabilité théorique très favorable de $p=2^{-3}$.
