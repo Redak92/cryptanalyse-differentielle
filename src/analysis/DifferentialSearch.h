@@ -46,4 +46,9 @@ public:
         double probabilityThreshold, 
         uint64_t maxBatchSize = 100000000
     ) const;
+
+    // --- VERIFICATION MANUELLE DES CLES MORTES ---
+    // Bombarde le chiffrement avec numSamples paires aléatoires pour mesurer
+    // la probabilité exacte d'une différentielle précise.
+    [[nodiscard]] double verifySpecificDifferential(Difference alpha, Difference beta, uint64_t numSamples = 1048576) const;
 };

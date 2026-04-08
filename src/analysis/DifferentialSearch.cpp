@@ -373,3 +373,38 @@ DifferentialSearch::DifferentialSearch(const ICipher &targetCipher) : cipher(tar
 
     return results;
 }
+
+
+double DifferentialSearch::verifySpecificDifferential(Difference alpha, Difference beta, uint64_t numSamples) const {
+    uint64_t successCount = 0;
+    
+    const int n = cipher.getBlockSize();
+    const uint64_t mask = (n < 64) ? (1ULL << n) - 1 : 0xFFFFFFFFFFFFFFFF;
+
+    std::random_device rd;
+    std::mt19937_64 gen(rd());
+    std::uniform_int_distribution<uint64_t> dis(0, mask);
+
+    for (uint64_t i = 0; i < numSamples; ++i) {
+        // 1. Tirer un texte clair aléatoire masqué
+        uint64_t x = dis(gen); 
+        
+        // 2. Appliquer la différence d'entrée
+        uint64_t x_alpha = (x ^ alpha) & mask;
+        
+        // 3. Chiffrer x et x XOR alpha
+        uint64_t y1 = cipher.encrypt(x);
+        uint64_t y2 = cipher.encrypt(x_alpha);
+        
+        // 4. Masquer les chiffrés
+        y1 &= mask;
+        y2 &= mask;
+        
+        // 5. Vérifier la collision de sortie (y1 XOR y2 == beta)
+        if ((y1 ^ y2) == beta) {
+            successCount++;
+        }
+    }
+    
+    return static_cast<double>(successCount) / static_cast<double>(numSamples);
+}
