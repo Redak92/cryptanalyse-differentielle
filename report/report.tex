@@ -8,7 +8,7 @@
 \usepackage{xcolor}
 \usepackage[default]{opensans}
 \usepackage{hyperref}
-\usepackage{algorithm}\usepackage{hyperref}
+\usepackage{algorithm}
 \usepackage{amsmath} 
 \usepackage{algpseudocode}
 \usepackage[margin=2cm]{geometry} 
@@ -577,7 +577,64 @@ Une piste d'amélioration théorique (non implémentée dans nos travaux) consis
     \end{tabular}
 \end{table}
 
-\section{Validation expérimentale et résolution matérielle}
+\section{Analyse comparative des performances sur SPN 16 bits}
+
+Afin d'évaluer l'efficacité des différentes stratégies de recherche, nous avons mené une campagne de tests sur un chiffrement SPN de 16 bits (3 tours, $p=2^{-7}$). Les évaluations ont été exécutées de manière strictement séquentielle sur un échantillon fixe de 500 clés aléatoires pour lisser les éventuelles variations matérielles et garantir la fiabilité des moyennes temporelles.
+
+Par ailleurs, l'algorithme de « pire cas » a dû être exclu de ce comparatif. La garantie de sécurité mathématique qu'il offre impose un nombre d'itérations colossal ($S = 200n/p$), entraînant une surcharge temporelle et spatiale qui rend son exécution impraticable, même sur un bloc réduit de 16 bits. Les résultats des méthodes évaluées sont synthétisés dans le Tableau~\ref{tab:perf_spn16}.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Temps moyens d'exécution des algorithmes sur SPN 16 bits (moyenne sur 500 clés).}
+    \label{tab:perf_spn16}
+    \begin{tabular}{lc}
+        \toprule
+        \textbf{Algorithme} & \textbf{Temps moyen (secondes)} \\
+        \midrule
+        Naïf Exhaustif & 12,239 \\
+        Naïf Optimisé & 3,373 \\
+        Compromis Temps-Mémoire & 2,984 \\
+        Fondamental & 2,831 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+L'analyse de cette hiérarchie de performances confirme la pertinence des modèles théoriques. L'algorithme naïf exhaustif s'effondre logiquement avec un temps moyen de 12,239~secondes, illustrant l'impossibilité pratique d'une recherche par force brute à plus grande échelle. Si l'approche naïve optimisée divise ce temps par près de quatre (3,373~s), elle reste fondamentalement limitée par sa mécanique de recherche linéaire.
+
+Les approches exploitant les collisions révèlent quant à elles pleinement leur supériorité. L'algorithme fondamental (2,831~s) s'impose comme la solution la plus performante, validant empiriquement l'avantage de la complexité en $\mathcal{O}(2^{n/2} \cdot p^{-1})$ permise par le paradoxe des anniversaires. 
+
+On observe logiquement que la variante de compromis temps-mémoire (2,984~s) se place très légèrement en retrait. Cet écart s'explique par la surcharge logicielle (\textit{overhead}) induite par le découpage en lots successifs et la gestion continue des filtres. Sur une architecture de 16 bits où la quantité de RAM n'est pas un facteur limitant, l'algorithme fondamental pur demeure donc l'option la plus directe et la plus rapide.
+
+\section{Les limites de l'approche naïve face à Speck 32/64 (3 tours)}
+
+Pour illustrer concrètement l'explosion combinatoire liée à l'augmentation de la taille du bloc, nous avons transposé nos expérimentations sur le chiffrement Speck 32/64. Afin de conserver des temps de calcul mesurables pour l'algorithme naïf optimisé, nous avons ciblé une caractéristique sur un nombre réduit de 3 tours, offrant une probabilité théorique très favorable de $p=2^{-3}$.
+
+Le Tableau~\ref{tab:perf_speck} synthétise les résultats de cette campagne de mesures. Contrairement aux tests précédents sur 16 bits, les limites matérielles et temporelles nous ont obligés à repenser notre protocole.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Performances de recherche différentielle (Cible : Speck32/64, 3 tours, $p=2^{-3}$). L'algorithme naïf exhaustif a été interrompu, son temps de calcul étant estimé à plusieurs années.}
+    \label{tab:perf_speck}
+    \begin{tabular}{llccc}
+        \toprule
+        \textbf{Algorithme} & \textbf{Complexité} & \textbf{Moyenne (s)} & \textbf{Écart-type} & \textbf{Accélération} \\
+        \midrule
+        Naïf Exhaustif & $\mathcal{O}(2^{2n})$ & - & - & - \\
+        Naïf Optimisé  & $\mathcal{O}(2^n \cdot p^{-1})$ & 10\,503,31 & 0,00 & Référence ($1\times$) \\
+        Fondamental    & $\mathcal{O}(2^{n/2} \cdot p^{-1})$ & 1,92 & 0,04 & $\sim \mathbf{5447\times}$ \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+L'analyse de ces résultats en conditions réelles met en lumière le «~mur de la scalabilité~» auquel se heurtent les approches triviales. L'impossibilité d'une attaque par force brute pure devient d'abord évidente : avec une complexité quadratique en $\mathcal{O}(2^{2n})$, l'algorithme naïf exhaustif exige ici l'évaluation de $2^{64}$ paires de textes clairs. Face à ce volume de données astronomique, l'exécution a dû être purement et simplement abandonnée. Ce vide statistique dans notre comparatif prouve qu'au-delà des algorithmes d'étude très réduits, la recherche globale par force brute est physiquement irréalisable. De son côté, bien qu'il réduise considérablement l'espace de recherche, l'algorithme naïf optimisé finit lui aussi par montrer ses limites absolues. Avec un temps d'exécution moyen dépassant les 10~500~secondes (soit près de trois heures) pour une simple attaque sur trois tours bénéficiant d'une probabilité pourtant très favorable ($p=2^{-3}$), la méthode devient inexploitable. Tenter des attaques plus profondes, nécessitant d'atteindre des seuils comme $p=2^{-9}$ sur cinq tours, exigerait des mois de calcul ininterrompu.
+
+À l'inverse, l'exploitation des collisions marque une évolution importante. L'algorithme fondamental démontre ici toute la puissance de sa conception en $\mathcal{O}(2^{n/2} \cdot p^{-1})$. En transformant le problème originel grâce au paradoxe des anniversaires, il traite exactement la même analyse en moins de deux secondes. L'accélération massive mesurée d'un facteur 5447 par rapport à l'approche naïve optimisée illustre de manière spectaculaire le point de bascule algorithmique théorique évoqué précédemment. 
+
+Ce comparatif grandeur nature justifie définitivement les observations faites sur le SPN 16 bits. Ce qui n'apparaissait que comme un léger avantage temporel sur un petit bloc se transforme en un gouffre de performance infranchissable sur une architecture de 32 bits.
+
+\section{Validation expérimentale et résolution matérielle (Speck 5 et 6 tours)}
+
+\subsection{Reproduction des résultats sur 5 tours de Speck 32/64}
 
 Pour valider notre implémentation, nous avons reproduit les résultats de l'article de référence (Section 2.5) en étudiant la meilleure caractéristique différentielle sur 5 tours de Speck 32/64 :
 $$ (0\text{x}0211, 0\text{x}0a04) \to (0\text{x}8000, 0\text{x}840a) $$
@@ -606,7 +663,7 @@ La première explication réside dans les limites de l'hypothèse d'indépendanc
 
 Pour conclure, notre implémentation est parvenue à extraire la caractéristique de manière entièrement automatisée pour $60,8\,\%$ des clés, alors même que notre vérification manuelle a prouvé que la différentielle était présente dans l'intégralité des cas. Ce résultat illustre directement la complexité liée à l'implémentation pratique de tels algorithmes. Le passage de la théorie mathématique à un outil logiciel contraint par la mémoire impose des choix d'architecture qui se heurtent parfois à la réalité algébrique du chiffrement. Cela confirme la pertinence et la nécessité de l'algorithme de « pire cas » pour assurer une vérification systématique et fiable, bien que son coût matériel reste en pratique prohibitif.
 
-\subsection{Reproduction des résultats sur 6 tours de Speck}
+\subsection{Reproduction des résultats sur 6 tours de Speck 32/64}
 
 Après avoir validé l'algorithme sur 5 tours, nous avons voulu reproduire le résultat de Dinur \textit{et al.} sur \textbf{6 tours} de Speck 32/64. Avec 6 tours, la probabilité chute à $p \approx 2^{-13}$, ce qui allonge considérablement le temps de calcul.
 
@@ -632,68 +689,7 @@ Nous avons limité la RAM à 50 millions d'entrées par lot (environ 1,14 Go). P
     \end{tabular}
 \end{table}
 
-Après un peu plus de 6 heures de calcul (21 747 secondes), le programme a identifié 6 candidats pertinents (voir Tableau~\ref{tab:speck_6tours}). 
-
-Il convient d'analyser la hiérarchie de ce classement. Le tableau met en évidence un premier candidat (\texttt{0x8d0a9d20}) présentant une probabilité mesurée ($0,000145$) supérieure à celle attendue dans la littérature ($2^{-13} \approx 0,000122$). Ce résultat n'est probablement pas une nouvelle découverte cryptographique, mais une illustration directe de la dépendance à la clé démontrée dans la section précédente. En raison de la lourdeur des calculs, cette extraction sur 6 tours n'a été exécutée que sur une unique clé générée aléatoirement (\texttt{0x3248c32a72be9d85}). L'interaction spécifique des bits de cette clé avec les opérations non-linéaires de Speck favorise localement la trajectoire vers \texttt{0x8d0a9d20}. 
-
-Toutefois, le deuxième candidat trouvé par notre algorithme correspond \textbf{exactement} à la meilleure caractéristique globale connue dans la littérature pour 6 tours :
-$$ (0\text{x}0211, 0\text{x}0a04) \to (0\text{x}850a, 0\text{x}9520) $$
-
-Le fait que notre programme parvienne à extraire ce véritable optimum théorique en deuxième position, avec une probabilité mesurée de $0,000092$ sur une seule clé testée, valide la robustesse de l'implémentation. Réussir à retrouver ce résultat automatiquement sur une machine standard prouve concrètement que le modèle mathématique par collisions fonctionne et que notre code C++ tient la charge sur de gros volumes de données.
-
-\section{Analyse comparative des performances sur SPN 16 bits}
-
-Afin d'évaluer l'efficacité des différentes stratégies de recherche, nous avons mené une campagne de tests sur un chiffrement SPN de 16 bits (3 tours, $p=2^{-7}$). Les évaluations ont été exécutées de manière strictement séquentielle sur un échantillon fixe de 500 clés aléatoires pour lisser les éventuelles variations matérielles et garantir la fiabilité des moyennes temporelles.
-
-Par ailleurs, l'algorithme de « pire cas » a dû être exclu de ce comparatif. La garantie de sécurité mathématique qu'il offre impose un nombre d'itérations colossal ($S = 200n/p$), entraînant une surcharge temporelle et spatiale qui rend son exécution impraticable, même sur un bloc réduit de 16 bits. Les résultats des méthodes évaluées sont synthétisés dans le Tableau~\ref{tab:perf_spn16}.
-
-\begin{table}[htbp]
-    \centering
-    \caption{Temps moyens d'exécution des algorithmes sur SPN 16 bits (moyenne sur 500 clés).}
-    \label{tab:perf_spn16}
-    \begin{tabular}{lc}
-        \toprule
-        \textbf{Algorithme} & \textbf{Temps moyen (secondes)} \\
-        \midrule
-        Naïf Exhaustif & 12,239 \\
-        Naïf Optimisé & 3,373 \\
-        Compromis Temps-Mémoire & 2,984 \\
-        Fondamental & 2,831 \\
-        \bottomrule
-    \end{tabular}
-\end{table}
-
-L'analyse de cette hiérarchie de performances confirme la pertinence des modèles théoriques. L'algorithme naïf exhaustif s'effondre logiquement avec un temps moyen de 12,239~secondes, illustrant l'impossibilité pratique d'une recherche par force brute à plus grande échelle. Si l'approche naïve optimisée divise ce temps par près de quatre (3,373~s), elle reste fondamentalement limitée par sa mécanique de recherche linéaire.
-
-Les approches exploitant les collisions révèlent quant à elles pleinement leur supériorité. L'algorithme fondamental (2,831~s) s'impose comme la solution la plus performante, validant empiriquement l'avantage de la complexité en $\mathcal{O}(2^{n/2} \cdot p^{-1})$ permise par le paradoxe des anniversaires. 
-
-On observe logiquement que la variante de compromis temps-mémoire (2,984~s) se place très légèrement en retrait. Cet écart s'explique par la surcharge logicielle (\textit{overhead}) induite par le découpage en lots successifs et la gestion continue des filtres. Sur une architecture de 16 bits où la quantité de RAM n'est pas un facteur limitant, l'algorithme fondamental pur demeure donc l'option la plus directe et la plus rapide.
-\section{Les limites de l'approche naïve face à Speck 32/64}
-
-Pour illustrer concrètement l'explosion combinatoire liée à l'augmentation de la taille du bloc, nous avons transposé nos expérimentations sur le chiffrement Speck 32/64. Afin de conserver des temps de calcul mesurables pour l'algorithme naïf optimisé, nous avons ciblé une caractéristique sur un nombre réduit de 3 tours, offrant une probabilité théorique très favorable de $p=2^{-3}$.
-
-Le Tableau~\ref{tab:perf_speck} synthétise les résultats de cette campagne de mesures. Contrairement aux tests précédents sur 16 bits, les limites matérielles et temporelles nous ont obligés à repenser notre protocole.
-
-\begin{table}[htbp]
-    \centering
-    \caption{Performances de recherche différentielle (Cible : Speck32/64, 3 tours, $p=2^{-3}$). L'algorithme naïf exhaustif a été interrompu, son temps de calcul étant estimé à plusieurs années.}
-    \label{tab:perf_speck}
-    \begin{tabular}{llccc}
-        \toprule
-        \textbf{Algorithme} & \textbf{Complexité} & \textbf{Moyenne (s)} & \textbf{Écart-type} & \textbf{Accélération} \\
-        \midrule
-        Naïf Exhaustif & $\mathcal{O}(2^{2n})$ & - & - & - \\
-        Naïf Optimisé  & $\mathcal{O}(2^n \cdot p^{-1})$ & 10\,503,31 & 0,00 & Référence ($1\times$) \\
-        Fondamental    & $\mathcal{O}(2^{n/2} \cdot p^{-1})$ & 1,92 & 0,04 & $\sim \mathbf{5447\times}$ \\
-        \bottomrule
-    \end{tabular}
-\end{table}
-
-L'analyse de ces résultats en conditions réelles met en lumière le «~mur de la scalabilité~» auquel se heurtent les approches triviales. L'impossibilité d'une attaque par force brute pure devient d'abord évidente : avec une complexité quadratique en $\mathcal{O}(2^{2n})$, l'algorithme naïf exhaustif exige ici l'évaluation de $2^{64}$ paires de textes clairs. Face à ce volume de données astronomique, l'exécution a dû être purement et simplement abandonnée. Ce vide statistique dans notre comparatif prouve qu'au-delà des algorithmes d'étude très réduits, la recherche globale par force brute est physiquement irréalisable. De son côté, bien qu'il réduise considérablement l'espace de recherche, l'algorithme naïf optimisé finit lui aussi par montrer ses limites absolues. Avec un temps d'exécution moyen dépassant les 10~500~secondes (soit près de trois heures) pour une simple attaque sur trois tours bénéficiant d'une probabilité pourtant très favorable ($p=2^{-3}$), la méthode devient inexploitable. Tenter des attaques plus profondes, nécessitant d'atteindre des seuils comme $p=2^{-9}$ sur cinq tours, exigerait des mois de calcul ininterrompu.
-
-À l'inverse, l'exploitation des collisions marque une évolution importante. L'algorithme fondamental démontre ici toute la puissance de sa conception en $\mathcal{O}(2^{n/2} \cdot p^{-1})$. En transformant le problème originel grâce au paradoxe des anniversaires, il traite exactement la même analyse en moins de deux secondes. L'accélération massive mesurée d'un facteur 5447 par rapport à l'approche naïve optimisée illustre de manière spectaculaire le point de bascule algorithmique théorique évoqué précédemment. 
-
-Ce comparatif grandeur nature justifie définitivement les observations faites sur le SPN 16 bits. Ce qui n'apparaissait que comme un léger avantage temporel sur un petit bloc se transforme en un gouffre de performance infranchissable sur une architecture de 32 bits.
+Après environ 6 heures de calcul (21 747 secondes), le programme a identifié 6 candidats (voir Tableau~\ref{tab:speck_6tours}). Le premier candidat (\texttt{0x8d0a9d20}) affiche une probabilité mesurée de $0,000145$, se plaçant ainsi devant le candidat (\texttt{0x850a9520}), évalué à $0,000092$. Pourtant, ce dernier correspond à la meilleure caractéristique connue dans la littérature pour 6 tours. Afin de vérifier ce classement et de déterminer s'il s'agissait d'une véritable découverte ou d'un simple biais, nous avons procédé à une vérification globale sur 100 clés aléatoires, en testant $2^{24}$ paires de textes clairs par clé. En moyenne, la probabilité du premier candidat s'effondre à $0,000061$, tandis que celle du candidat de la littérature se stabilise à $0,000114$, confirmant ainsi son statut de meilleur candidat théorique ($2^{-13} \approx 0,000122$). Ce test sur 6 tours valide notre implémentation C++ et montre sa capacité à traiter de grands volumes de données tout en respectant les limites de la mémoire. Il rappelle également qu'une phase de vérification globale reste indispensable pour distinguer les véritables failles cryptographiques des simples erreurs d'évaluation.
 
 \section{Conclusion Générale et Perspectives}
 
