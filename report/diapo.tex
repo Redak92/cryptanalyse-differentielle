@@ -1,0 +1,89 @@
+\documentclass[10pt]{beamer}
+
+% --- PACKAGES DE BASE ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{booktabs} 
+\usepackage{graphicx}
+
+% --- TYPOGRAPHIE OFFICIELLE ---
+\usepackage[default]{opensans} 
+
+% --- COULEURS OFFICIELLES ---
+\definecolor{UPSPrune}{RGB}{99, 0, 60} 
+\definecolor{UPSGrisFonce}{RGB}{49, 62, 72} 
+\definecolor{UPSGrisClair}{RGB}{213, 218, 223} 
+
+% --- THÈME ET COULEURS BEAMER ---
+\usetheme{Madrid}
+\usecolortheme{whale}
+
+% Application de la couleur Prune aux éléments de structure
+\setbeamercolor{structure}{fg=UPSPrune}
+\setbeamercolor{palette primary}{bg=UPSPrune, fg=white}
+\setbeamercolor{palette secondary}{bg=UPSPrune!85, fg=white}
+\setbeamercolor{palette tertiary}{bg=UPSPrune!70, fg=white}
+
+% Personnalisation des blocs selon la palette secondaire
+\setbeamercolor{block title}{bg=UPSPrune, fg=white}
+\setbeamercolor{block body}{bg=UPSGrisClair!30, fg=black}
+
+% --- INFOS DOCUMENT ---
+\title[Détection de propriétés statistiques]{Détection efficace de propriétés statistiques de chiffrements symétriques}
+\subtitle{TER - Master 1 SeCReTS}
+\author[François, Dupré, Guibert]{Alexandre FRANÇOIS \and Binet DUPRÉ \and Bastien GUIBERT}
+
+\institute[UPSaclay]{
+    \vfill
+    \includegraphics[width=4cm]{figures/Logotype UPSaclay_RVB.png}
+}
+\date[Avril 2026]{17 Avril 2026}
+
+% --- LOGO DE COIN ---
+\logo{\includegraphics[width=1cm]{figures/Logotype UPSaclay_RVB.png}}
+
+\begin{document}
+
+% --- PAGE DE TITRE ---
+\begin{frame}
+    \titlepage
+\end{frame}
+
+% --- SOMMAIRE ---
+\begin{frame}{Sommaire}
+    \tableofcontents
+\end{frame}
+
+% =========================================================
+% PARTIE 1 : BINET DUPRÉ
+% =========================================================
+\section{Titre de la section 1}
+
+\begin{frame}{Titre de la section 1}
+    \begin{block}{Exemple de bloc}
+        Police Open Sans
+    \end{block}
+    \begin{itemize}
+        \item Point 1.
+        \item Point 2.
+    \end{itemize}
+\end{frame}
+
+% =========================================================
+% PARTIE 2 : ALEXANDRE FRANÇOIS
+% =========================================================
+\section{Titre de la section 2}
+\begin{frame}{Titre de la section 2}
+    % Contenu...
+\end{frame}
+
+% =========================================================
+% PARTIE 3 : BASTIEN GUIBERT
+% =========================================================
+\section{Titre de la section 3}
+\begin{frame}{Titre de la section 3}
+    % Contenu...
+\end{frame}
+
+\end{document}
