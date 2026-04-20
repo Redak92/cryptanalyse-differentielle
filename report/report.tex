@@ -195,15 +195,20 @@ Le pseudo-code suivant résume l'algorithme tel qu'il a été implémenté et op
 \end{algorithm}
 
 \subsection{Limites matérielles et stratégies d'adaptation}
-Bien que très efficace sur de petits blocs, cette implémentation s'est directement heurtée au « mur de la RAM » lors de notre passage à l'échelle. Lors de nos premières tentatives d'exécution de l'algorithme naïf sur Speck 32/64 ($n=32$), nous avons constaté une saturation immédiate de la mémoire vive (16 Go) de nos stations de travail. Le simple fait de vouloir allouer la table de correspondance destinée à accueillir les pré-calculs nécessitait théoriquement $34,36$ Go de RAM. 
+Bien que très efficace sur des petites tailles de bloc, cette implémentation s'est directement heurtée au « mur de la RAM » lors de notre passage à l'échelle. Lors de nos premières tentatives d'exécution de l'algorithme naïf sur Speck 32/64 ($n=32$), nous avons constaté une saturation immédiate de la mémoire vive (16 Go) de nos stations de travail. Le simple fait de vouloir allouer la table des valeurs de $F$ pour des entiers de 64 bits nécessitait théoriquement $34,36$ Go de RAM :  
+\begin{equation*}
+    2^{32} \text{ entrées} \times 8 \text{ octets/entrée} 
+    = 2^{35} \text{ octets} \approx 34{,}36 \text{ Go}
+\end{equation*}
+Ce blocage systématique, se traduisant par un plantage du programme par dépassement de mémoire (\textit{Out-Of-Memory}), nous a forcés à abandonner l'idée d'un stockage complet de cette table. Lorsque la taille du bloc excède ainsi les capacités physiques de la machine, l'algorithme doit impérativement être adapté, ce qui implique de sacrifier la vitesse d'exécution pour préserver la mémoire.
 
-Ce blocage systématique, se traduisant par un plantage du programme par dépassement de mémoire (\textit{Out-Of-Memory}), nous a forcés à abandonner l'idée d'un stockage complet pour ce paramètre. Lorsque la taille du bloc excède ainsi les capacités physiques de la machine, l'algorithme doit impérativement être adapté, ce qui implique de sacrifier la vitesse d'exécution pour préserver la mémoire.
+Plusieurs stratégies d'adaptation ont dû être envisagées. La solution la plus radicale pour soulager la mémoire consiste à supprimer totalement la phase de pré-calcul. En ne stockant plus aucun résultat à l'avance, l'algorithme se voit contraint d'évaluer les fonctions de chiffrement à la volée, à chaque nouvelle itération. Si l'empreinte spatiale redevient ainsi minime, le temps d'exécution explose inévitablement, la complexité temporelle repassant à son maximum. 
 
-Plusieurs stratégies d'adaptation ont dû être envisagées. La solution la plus radicale pour soulager la mémoire consiste à supprimer totalement la phase de pré-calcul. En ne stockant plus aucun résultat à l'avance, l'algorithme se voit contraint d'évaluer les fonctions de chiffrement à la volée, à chaque nouvelle itération. Si l'empreinte spatiale redevient ainsi minime, le temps d'exécution explose inévitablement, la complexité temporelle repassant à son maximum quadratique. 
-
-Une autre option d'allègement matériel repose sur la désactivation de la parallélisation. En forçant un retour à un mode d'exécution strictement séquentiel, le programme évite l'allocation simultanée de multiples et volumineux tableaux de compteurs par les différents fils d'exécution du processeur. 
+Une autre option pour réduire l'empreinte mémoire repose sur la désactivation de la parallélisation. En forçant un retour à un mode d'exécution strictement séquentiel, le programme évite l'allocation simultanée de multiples et volumineux tableaux de compteurs par les différents fils d'exécution du processeur. 
 
 Enfin, une dernière solution réside dans le nettoyage de la mémoire à la volée. Plutôt que de conserver l'ensemble des différentielles valides au sein d'une unique structure de données jusqu'à la fin du traitement, l'algorithme affiche immédiatement sur la sortie standard les paires trouvées pour une différence d'entrée donnée. Il purge et réinitialise ensuite intégralement sa mémoire de travail avant de passer à l'analyse de la différence suivante, empêchant de fait toute accumulation fatale de données.
+
+Malgrès l'ensemble de ces adaptations, notre implémentation naïve est restée incapable de mener à bien une analyse complète sur Speck32/64, confirmant la nécessité d'une approche fondamentalment différente.
 
 \section{L'Algorithme de recherche standard : une approche statistique}
 
