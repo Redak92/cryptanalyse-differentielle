@@ -186,10 +186,8 @@ Le pseudo-code suivant résume l'algorithme tel qu'il a été implémenté et op
     \For{$x \gets 0$ \textbf{to} $limit - 1$}
         \State $\beta \gets ftable[x] \oplus ftable[x \oplus \alpha]$
         \State $counts[\beta] \gets counts[\beta] + 1$
-    \EndFor
-    \For{$\beta \gets 0$ \textbf{to} $limit - 1$}
-        \If{$counts[\beta] > minCount$}
-            \State Sauvegarder $(\alpha, \beta, \frac{counts[\beta]}{limit})$
+        \If{$counts[\beta] == minCount + 1$}
+            \State Sauvegarder $(\alpha, \beta, counts[\beta])$
         \EndIf
     \EndFor
 \EndFor
