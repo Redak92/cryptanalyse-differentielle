@@ -84,33 +84,60 @@
     \end{center}
 \end{titlepage}
 
-% --- DÉBUT DU RAPPORT ---
-\newpage
+% --- AJOUT DE LA PAGE VIERGE ---
+\clearpage
+\thispagestyle{empty}
+\phantom{.}
+\clearpage
+
+% --- DÉBUT DU SOMMAIRE ---
+\pagenumbering{arabic}
 \tableofcontents
 \newpage
 
 \section{Introduction}
 
-La sécurité des communications numériques modernes repose en grande partie sur la robustesse des primitives de chiffrement symétrique. Pour garantir la confidentialité des données, ces algorithmes doivent se comporter comme des permutations parfaitement aléatoires. Dès lors, le travail du cryptanalyste consiste à déceler des failles dans cette conception en identifiant des propriétés statistiques qui s'écartent du hasard. Parmi les techniques les plus puissantes figure la cryptanalyse différentielle, introduite par Biham et Shamir à la fin des années 1980. Cette méthode analyse la propagation d'une différence d'entrée spécifique à travers les tours du chiffrement dans l'espoir d'observer une différence de sortie avec une probabilité anormalement élevée.
+La sécurité des communications numériques modernes repose en grande partie sur la robustesse des primitives de chiffrement symétrique. Pour garantir la confidentialité des données, ces algorithmes doivent se comporter comme des permutations parfaitement aléatoires. Néanmoins, à l'exception de constructions théoriques impraticables comme le masque jetable, il est impossible de prouver mathématiquement la sécurité absolue des primitives symétriques modernes. Dès lors, leur évaluation continue par la cryptanalyse s'impose comme une nécessité. Le travail du cryptanalyste consiste alors à déceler des failles dans cette conception en identifiant, par exemple, des biais statistiques permettant de distinguer le chiffrement d'une fonction purement aléatoire. Parmi les techniques les plus puissantes figure la cryptanalyse différentielle \cite{BS91}, introduite par Biham et Shamir à la fin des années 1980. Cette méthode analyse la propagation d'une différence d'entrée spécifique à travers les tours du chiffrement dans l'espoir d'observer une différence de sortie avec une probabilité anormalement élevée.
 
-Historiquement, la découverte de telles caractéristiques différentielles reposait sur l'évaluation systématique d'une pléthore de textes clairs. L'approche triviale consiste à construire la table de distribution des différences (DDT) complète. Elle exige une complexité temporelle et spatiale de l'ordre de $2^{2n}$ (où $n$ est la taille du bloc). Si cette méthode est viable pour des chiffrements de taille réduite, elle se heurte à une limite physique liée à l'explosion combinatoire dès que l'on cible des blocs de 64 ou 128 bits. L'évaluation exhaustive devient alors physiquement impossible, car elle requiert des ressources qui dépassent les capacités des supercalculateurs mondiaux.
+Génériquement, la découverte de telles caractéristiques différentielles reposait sur l'évaluation systématique d'une pléthore de textes clairs. L'approche triviale consiste à construire la table de distribution des différences (DDT) complète. Elle exige une complexité en temps et en mémoire de l'ordre de $2^{2n}$ (où $n$ est la taille du bloc). Si cette méthode est viable pour des chiffrements de taille réduite, elle se heurte à l'explosion combinatoire dès que l'on cible des taille de blocs de 64 ou 128 bits. L'évaluation exhaustive devient alors physiquement impossible, car elle requiert des ressources qui dépassent les capacités des supercalculateurs mondiaux.
 
-C'est dans ce contexte de limitation fondamentale que s'inscrivent les algorithmes de recherche probabilistes basés sur les collisions. En exploitant des propriétés mathématiques telles que la différenciation par substitut et le paradoxe des anniversaires, il est théoriquement possible de ramener cette complexité à l'ordre de $2^{n/2} \cdot p^{-1}$.
+C'est dans ce contexte que s'inscrivent les algorithmes de recherche probabilistes basés sur les collisions. En exploitant des propriétés mathématiques telles que par l'utilisation d'une dérivée de substitution et le paradoxe des anniversaires, il est théoriquement possible de ramener cette complexité à l'ordre de $2^{n/2} \cdot p^{-1}$ (où $p$ représente la probabilité de la différentielle recherchée)
 
-Le présent Travail d'Étude et de Recherche (TER) s'articule autour de cette avancée théorique. Notre objectif n'a pas été de nous limiter à une étude bibliographique, mais de développer un moteur d'analyse cryptographique hautes performances en C++ afin de confronter ces modèles mathématiques à la réalité de la programmation logicielle et matérielle. 
+Le présent Travail d'Étude et de Recherche (TER) porte sur cette avancée théorique. Notre objectif n'a pas été de nous limiter à une étude bibliographique, mais de développer un moteur d'analyse cryptographique hautes performances en C++ afin de confronter ces modèles mathématiques à la réalité de la programmation logicielle et matérielle. 
 
-Dans ce rapport, nous détaillerons le fonctionnement de l'algorithme fondamental par collisions et l'importance de ses filtres probabilistes (loi de Poisson) avant d'exposer la contrainte critique du «~mur de la RAM~». Pour surmonter cette impasse, nous étudierons les variantes de compromis temps/mémoire (\textit{Tradeoff}) ainsi que l'algorithme de «~pire cas~». Enfin, nous présenterons une analyse critique de nos résultats expérimentaux. Au travers de tests menés sur des architectures de 12 et 16 bits jusqu'à l'application sur le chiffrement Speck 32/64, nous mettrons en évidence la hiérarchie de performances des différents algorithmes étudiés.
+Dans ce rapport, nous détaillerons le fonctionnement de l'algorithme fondamental par collisions \cite{DDKRS23} et l'importance de ses filtres probabilistes (loi de Poisson) avant d'exposer la contrainte critique du «~mur de la RAM~». Pour surmonter cette impasse, nous étudierons les variantes de compromis temps/mémoire (\textit{Tradeoff}) \cite{DDKRS23} ainsi que l'algorithme de «~pire cas~» \cite{DDKRS23}. Enfin, nous présenterons une analyse critique de nos résultats expérimentaux. Au travers de tests menés sur des architectures de 12 et 16 bits jusqu'à l'application sur le chiffrement Speck 32/64 \cite{BSSTWW13}, nous mettrons en évidence la hiérarchie de performances des différents algorithmes étudiés.
 
-\section{L'Algorithme Naïf Absolu (Recherche Exhaustive)}
+\subsection*{Notations et définitions préliminaires}
+
+Afin de faciliter la lecture des développements algorithmiques et mathématiques présentés dans ce rapport, nous fixons les notations suivantes :
+
+\begin{itemize}
+    \item \textbf{$n$} : désigne la taille du bloc du chiffrement (en bits). L'espace des messages (textes clairs) est noté $\{0, 1\}^n$.
+    \item \textbf{$F$} : représente la primitive cryptographique étudiée.
+    \item \textbf{$x$} : désigne un message clair appartenant à $\{0, 1\}^n$.
+    \item \textbf{$\alpha$} : représente la \textit{différence d'entrée} entre deux messages, définie par le OU exclusif (XOR) :
+    $$\alpha = x \oplus x'$$
+    \item \textbf{$\beta$} : représente la \textit{différence de sortie} observée après chiffrement, telle que :
+    $$\beta = F(x) \oplus F(x \oplus \alpha)$$
+    \item \textbf{$p$} : désigne la probabilité d'une caractéristique différentielle $(\alpha, \beta)$. Elle est définie par la probabilité que deux messages ayant une différence $\alpha$ produisent une différence de sortie $\beta$ :
+    $$p = \Pr_{x}[F(x) \oplus F(x \oplus \alpha) = \beta]$$
+    \item \textbf{$\gamma$} : désigne le \textit{substitut}, une différence arbitraire non nulle utilisée pour sonder le chiffrement indépendamment de $\alpha$.
+    \item \textbf{$g_{\gamma}$} : représente la fonction dérivée de $F$ dans la direction du substitut $\gamma$, définie par :
+    $$g_{\gamma}(x) = F(x) \oplus F(x \oplus \gamma)$$
+    \item \textbf{DDT} : désigne la \textit{Difference Distribution Table} (Table de Distribution des Différences), matrice de taille $2^n \times 2^n$ recensant le nombre d'occurrences de chaque couple $(\alpha, \beta)$.
+\end{itemize}
+
+
+\section{L'Algorithme naïf absolu : la recherche exhaustive}
 
 La méthode la plus directe pour détecter des propriétés statistiques au sein d'un chiffrement symétrique consiste à évaluer de manière exhaustive toutes les paires possibles de textes clairs. Cet algorithme, que nous qualifierons de « naïf absolu », sert de point de référence théorique pour comprendre la mécanique de la cryptanalyse différentielle et construire la \textbf{Table de Distribution des Différences (DDT)}.
 
-\subsection{Principe Théorique (Version Brute)}
+\subsection{Principe théorique (version brute)}
 Dans sa version conceptuelle la plus pure, l'algorithme ne possède aucun filtre ni optimisation. Pour chaque différence d'entrée possible $\alpha$ (allant de $1$ à $2^n - 1$, où $n$ est la taille du bloc en bits), il parcourt l'intégralité de l'espace des messages $x$ (soit $2^n$ messages). La boucle sur $\alpha$ commence délibérément à $1$ et non à $0$, car une différence $\alpha = 0$ implique des messages identiques ($x \oplus 0 = x$), conduisant toujours à une différence de sortie triviale $\beta = 0$, sans aucun intérêt cryptanalytique.
 
 Pour chaque message $x$, la version brute calcule les chiffrés à la volée, évalue la différence de sortie $\beta = F(x) \oplus F(x \oplus \alpha)$, et incrémente la case correspondante dans une matrice globale (la DDT complète de taille $2^n \times 2^n$).
 
-\subsection{Complexités de l'Algorithme Brut}
+\subsection{Complexités de l'algorithme brut}
 L'évaluation de cette approche naïve met en évidence des limites importantes :
 \begin{itemize}
     \item \textbf{Complexité temporelle :} $\mathcal{O}(2^{2n})$. Il y a approximativement $2^n$ différences d'entrées $\alpha$ à tester, et pour chacune d'elles on évalue $2^n$ messages $x$, ce qui nécessite $2 \times 2^{2n}$ opérations de chiffrement. Cette complexité quadratique rend la méthode strictement inutilisable en temps raisonnable dès que $n > 16$.
@@ -122,7 +149,7 @@ L'évaluation de cette approche naïve met en évidence des limites importantes 
 
 Pour pouvoir exécuter cette recherche exhaustive efficacement, même sur des « chiffrements jouets » ($n \le 16$), l'implémentation théorique brute a dû être entièrement repensée. Dès le début du projet, le choix du langage C++ s'est imposé pour nous offrir un contrôle strict sur la gestion de la mémoire et les performances d'exécution (l'intégralité de notre code source optimisé est disponible sur notre dépôt GitHub public : \url{https://github.com/Redak92/cryptanalyse-differentielle}, dans le fichier \url{src/analysis/DifferentialSearch.cpp}). Nous avons articulé notre approche autour de trois optimisations majeures.
 
-\paragraph{Le pré-calcul des chiffrés (Compromis temps/mémoire) :}
+\paragraph{Le pré-calcul des chiffrés (compromis temps/mémoire) :}
 Pour réduire la surcharge temporelle liée aux appels répétés à la fonction de chiffrement, nous avons mis en place un compromis temps/mémoire. Au lieu de calculer les chiffrés à la volée en permanence, l'ensemble des $2^n$ messages possibles est évalué une seule fois au tout début de l'exécution. Les résultats sont stockés dans une table de correspondance globale, que nous noterons $T$. Le calcul de la différence de sortie $\beta$ se résume alors à deux simples accès mémoire directs suivis d'une disjonction exclusive : $T[x] \oplus T[x \oplus \alpha]$.
 
 \paragraph{Du stockage exhaustif au filtrage à la volée :}
@@ -163,7 +190,7 @@ Le pseudo-code suivant résume l'algorithme tel qu'il a été implémenté et op
 \end{algorithmic}
 \end{algorithm}
 
-\subsection{Limites matérielles et Stratégies d'adaptation}
+\subsection{Limites matérielles et stratégies d'adaptation}
 Bien que très efficace sur de petits blocs, cette implémentation s'est directement heurtée au « mur de la RAM » lors de notre passage à l'échelle. Lors de nos premières tentatives d'exécution de l'algorithme naïf sur Speck 32/64 ($n=32$), nous avons constaté une saturation immédiate de la mémoire vive (16 Go) de nos stations de travail. Le simple fait de vouloir allouer la table de correspondance destinée à accueillir les pré-calculs nécessitait théoriquement $34,36$ Go de RAM. 
 
 Ce blocage systématique, se traduisant par un plantage du programme par dépassement de mémoire (\textit{Out-Of-Memory}), nous a forcés à abandonner l'idée d'un stockage complet pour ce paramètre. Lorsque la taille du bloc excède ainsi les capacités physiques de la machine, l'algorithme doit impérativement être adapté, ce qui implique de sacrifier la vitesse d'exécution pour préserver la mémoire.
@@ -174,11 +201,11 @@ Une autre option d'allègement matériel repose sur la désactivation de la para
 
 Enfin, une dernière solution réside dans le nettoyage de la mémoire à la volée. Plutôt que de conserver l'ensemble des différentielles valides au sein d'une unique structure de données jusqu'à la fin du traitement, l'algorithme affiche immédiatement sur la sortie standard les paires trouvées pour une différence d'entrée donnée. Il purge et réinitialise ensuite intégralement sa mémoire de travail avant de passer à l'analyse de la différence suivante, empêchant de fait toute accumulation fatale de données.
 
-\section{L'Algorithme de Recherche Standard : Une approche statistique}
+\section{L'Algorithme de recherche standard : une approche statistique}
 
 Bien que l'algorithme exhaustif soit utile pour des paramètres très réduits, sa complexité en $\mathcal{O}(2^{2n})$ devient extrêmement lourde pour des chiffrements traitant des blocs de 32 bits, et totalement impraticable au-delà. Pour pallier cette limitation, une approche naturelle consiste à transformer la recherche déterministe en un problème d'échantillonnage statistique. Cet algorithme est décrit par Dinur et al. comme l'adaptation classique de la construction d'une DDT pour détecter des différentielles de probabilité supérieure à un seuil $p$.
 
-\subsection{Principes et Fondements Statistiques : Distinguer le signal du bruit}
+\subsection{Principes et fondements statistiques : distinguer le signal du bruit}
 
 Plutôt que de parcourir l'intégralité de l'espace des messages, l'algorithme privilégie une stratégie par échantillonnage. Pour chaque différence d'entrée $\alpha$, nous testons un nombre fixe $k$ de paires aléatoires. Cette approche transforme la recherche en un défi statistique où l'objectif est de faire émerger un \og signal \fg{} (une différentielle réelle) d'un \og bruit \fg{} de fond aléatoire.
 
@@ -209,7 +236,7 @@ En négligeant le terme en $\lambda^3$ (d'ordre supérieur et donc totalement in
 
 Dans notre exemple, cette probabilité de faux signal chute à environ $2^{-99}$, ce qui rend toute collision accidentelle statistiquement impossible et prouve l'existence d'une structure non aléatoire.
 
-\subsection{Analyse de l'implémentation C++ et Limites}
+\subsection{Analyse de l'implémentation C++ et limites}
 
 Notre implémentation, disponible dans le fichier \url{src/analysis/DifferentialSearch.cpp}, parallélise l'itération sur les différences d'entrée $\alpha$ en répartissant la charge sur plusieurs fils d'exécution. Contrairement à l'algorithme exhaustif, l'utilisation d'une table de hachage dynamique permet de ne conserver que les différences de sortie effectivement rencontrées, optimisant ainsi considérablement l'empreinte mémoire.
 
@@ -217,11 +244,11 @@ Toutefois, ce moteur reste limité par le facteur $2^n$. Pour un chiffrement com
 
 C'est cette barrière qui justifie l'introduction de l'algorithme probabiliste présenté dans l'article. En s'appuyant sur le \textbf{paradoxe des anniversaires}, ce dernier permet de convertir la recherche de différentielles en une recherche de collisions, abaissant la complexité à l'ordre de $2^{n/2} \cdot p^{-1}$.
 
-\section{L'Algorithme Fondamental : L'exploitation des collisions}
+\section{L'Algorithme fondamental : l'exploitation des collisions}
 
 Pour franchir la barrière du $2^n$, cet algorithme délaisse l'approche par différence d'entrée fixe pour s'appuyer sur la \textbf{différenciation par substitut}. L'objectif est de détecter toutes les différentielles $\alpha \rightarrow \beta$ de probabilité $p$ avec une complexité temporelle et spatiale réduite à l'ordre de $\tilde{O}(2^{n/2} \cdot p^{-1})$.
 
-\subsection{Le concept de Différenciation par Substitut}
+\subsection{Le concept de différenciation par substitut}
 
 La nouvelle approche du papier consiste à choisir une différence $\gamma$ arbitraire et non nulle, appelée \textbf{substitut}, totalement indépendante de la différence $\alpha$ recherchée. On définit la fonction $g_{\gamma}$ comme la dérivée de $f$ dans la direction du substitut :
 \begin{equation*}
@@ -230,7 +257,7 @@ La nouvelle approche du papier consiste à choisir une différence $\gamma$ arbi
 
 Pour appréhender ce mécanisme, il convient d'analyser la différence fondamentale de traitement entre les deux méthodes. L'algorithme standard nécessite une évaluation exhaustive : chaque différence d'entrée $\alpha$ potentielle doit être testée individuellement, ce qui impose une complexité temporelle prohibitive de l'ordre de $\mathcal{O}(2^n)$. À l'inverse, la différenciation par substitut permet d'évaluer l'intégralité des directions $\alpha$ simultanément en appliquant un filtre global sur l'espace des messages. Plutôt que de chercher directement la différence de sortie $\beta$, la fonction $g_{\gamma}$ associe une signature mathématique caractéristique à chaque message évalué. La détection d'une collision entre deux de ces signatures révèle alors l'existence d'une structure différentielle sous-jacente (la direction $\alpha$), s'affranchissant ainsi de la nécessité d'itérer de manière systématique sur chaque différence d'entrée.
 
-\subsection{Le mécanisme du « Quatuor Correct » (\textit{Right Quartet})}
+\subsection{Le mécanisme du « quatuor correct » (\textit{right quartet})}
 
 Le succès de l'algorithme repose sur une structure géométrique reliant quatre messages, formant ce que les auteurs appellent un quatuor $\{x, x \oplus \alpha, x \oplus \gamma, x \oplus \alpha \oplus \gamma\}$. La structure de ce quatuor et la propagation des différences à travers la fonction de chiffrement sont illustrées par le schéma de flux de la Figure~\ref{fig:right_quartet}.
 
@@ -277,7 +304,7 @@ Ce résultat démontre mathématiquement comment le passage d'une recherche exha
 
 Une fois l'échantillon $M$ généré, l'algorithme s'appuie sur trois seuils statistiques précis pour séparer le signal du bruit : $n/4$ pour la détection, puis $n/p$ et $n/2$ pour la vérification. Ces valeurs ne sont pas empiriques, elles découlent d'une analyse rigoureuse basée sur la loi de Poisson.
 
-\paragraph{Phase de détection : Le seuil $n/4$}
+\paragraph{Phase de détection : le seuil $n/4$}
 
 Pour une vraie différentielle de probabilité $p$, l'espérance du nombre de collisions (quatuors corrects) parmi les $M$ messages évalués est $\lambda = n/2$. Fondamentalement, la détection de chaque quatuor correspond à une épreuve de Bernoulli indépendante, ce qui signifie que le nombre total de collisions observées, que nous noterons $X$, suit rigoureusement une \textbf{loi binomiale}. Cependant, face au nombre gigantesque de tirages (l'espace des messages) et à la rareté d'un succès (la probabilité $p^2$ étant infime), cette distribution binomiale s'approxime parfaitement par une \textbf{loi de Poisson} de paramètre $\lambda = n/2$. On note ainsi :
 \begin{equation*}
@@ -307,7 +334,7 @@ Cette mécanique statistique mathématique est illustrée visuellement par la Fi
     \label{fig:poisson_signal_noise}
 \end{figure}
 
-\paragraph{Phase de vérification : Les seuils $n/p$ et $n/2$}
+\paragraph{Phase de vérification : les seuils $n/p$ et $n/2$}
 
 Bien que le filtre de détection élimine l'immense majorité du bruit, l'algorithme sécurise définitivement le résultat en testant les candidats survivants. Pour ce faire, il génère un nouvel échantillon de test, totalement indépendant du premier, composé de $N_{verify} = n/p$ paires aléatoires présentant la différence d'entrée $\alpha$ suspectée.
 
@@ -324,7 +351,7 @@ L'algorithme valide définitivement la différentielle si le compteur de succès
 \end{equation*}
 Pour qu'un tel faux positif soit validé, il faudrait qu'il produise plus de $n/2$ succès, soit observer au moins $5$ fois son espérance théorique. Les propriétés de la loi de Poisson confirment que la probabilité d'une telle déviation est tout aussi négligeable que dans la phase de détection. Cette double barrière statistique garantit la fiabilité absolue des propriétés remontées par l'algorithme.
 
-\subsection{Implémentation, Complexités et Limite de la Mémoire Vive}
+\subsection{Implémentation, complexités et limite de la mémoire vive}
 \label{sec:impl_fondamental}
 
 Le pseudo-code détaillé de cet algorithme fondamental est fourni à la page 9 de l'article. Nous l'avons intégralement implémenté dans notre programme sous la fonction \texttt{run\allowbreak Fundamental\allowbreak Algorithm}, dont le code source C++ est librement accessible sur notre dépôt GitHub public, au sein du fichier \url{src/analysis/DifferentialSearch.cpp}.
@@ -365,7 +392,7 @@ L'échelle logarithmique de ce graphique met en évidence la nature exponentiell
 
 Cette limitation physique absolue justifie la nécessité de recourir à des variantes de l'algorithme plus économes en ressources. Pour contourner ce « mur de la RAM », les auteurs explorent deux voies successives : une première approche radicale supprimant totalement le stockage, suivie d'une approche plus équilibrée reposant sur un compromis temps/mémoire.
 
-\section{L'Algorithme Sans Mémoire (\textit{Memoryless}) : Le prix du temps}
+\section{L'algorithme sans mémoire (\textit{memoryless}) : le prix du temps}
 
 Pour pallier le problème rédhibitoire de l'empreinte spatiale de l'algorithme fondamental, les auteurs présentent à la page 13 de leur article une variante dite « sans mémoire » (\textit{memoryless}). Cette approche permet de ramener la consommation de mémoire vive à une constante $\mathcal{O}(1)$, éliminant de facto le « mur de la RAM ».
 
@@ -394,7 +421,7 @@ Concrètement, cela signifie qu'une recherche qui prendrait \textbf{1 minute} av
 
 Et plus la probabilité $p$ recherchée est faible, plus le temps d'exécution augmente. Bien que hautement parallélisable, cette méthode s'avère donc beaucoup trop lente pour être exploitée efficacement sur des machines standards, qui disposent pourtant de plusieurs gigaoctets de RAM laissés inutilisés par cette approche. C'est précisément pour combler ce vide entre le « tout mémoire » (incalculable) et le « sans mémoire » (interminable) que la solution du compromis a été développée.
 
-\section{L'Algorithme de Compromis Temps/Mémoire (Tradeoff)}
+\section{L'algorithme de compromis temps/mémoire (tradeoff)}
 
 Comme nous venons de le voir, l'approche fondamentale sature la mémoire vive, tandis que l'approche sans mémoire s'avère rédhibitoirement lente. Pour surmonter ce dilemme, les auteurs proposent en annexe de leur article d'exploiter la mémoire disponible (notée $S$) de façon stratégique pour concevoir des algorithmes de compromis (\textit{Tradeoffs}). Ils décrivent plus précisément deux variantes distinctes, adaptées à différentes capacités matérielles :
 
@@ -405,7 +432,7 @@ Comme nous venons de le voir, l'approche fondamentale sature la mémoire vive, t
 
 Dans le cadre de ce projet, les ordinateurs modernes standards disposant généralement d'une quantité de mémoire vive confortable (de 8 à 16 Go de RAM), nous ne sommes pas dans un scénario de mémoire critique absolue. Nous nous sommes donc naturellement penchés sur le \textbf{Second Algorithme de Compromis} (\textit{Tradeoff algorithm 2}). Cette approche permet de conserver la vitesse d'exécution optimale en $\tilde{\mathcal{O}}(2^{n/2} p^{-1})$ tout en plafonnant intelligemment l'utilisation de la mémoire à un espace fixe dimensionné à $\tilde{\mathcal{O}}(p^{-2})$.
 
-\subsection{Principe Théorique : Échantillonnage par lots (\textit{Batching})}
+\subsection{Principe théorique : échantillonnage par lots (\textit{batching})}
 
 Au lieu de générer et de stocker d'un seul coup un immense échantillon, l'algorithme procède par lots (\textit{batches}). Il alloue un espace mémoire fixe $S$, qui correspond directement au nombre de collisions que l'on s'autorise à conserver simultanément. Pour générer ces lots, l'algorithme exécute une boucle interne s'appuyant sur la recherche de collisions parallèles (\textit{Parallel Collision Search} ou PCS). Cette technique permet de trouver des collisions dans une fonction pseudo-aléatoire sans avoir à mémoriser toutes ses évaluations, réduisant ainsi drastiquement l'empreinte spatiale.
 
@@ -432,7 +459,7 @@ L'intérêt de cette formule apparaît lorsque l'on fixe la limite de mémoire a
 
 En fragmentant ainsi la recherche, l'algorithme retrouve exactement la même complexité temporelle que l'approche fondamentale, mais en ayant réduit la complexité spatiale d'un facteur important, passant de $2^{n/2}p^{-1}$ à seulement $p^{-2}$.
 
-\subsection{De la théorie à la pratique : Notre implémentation C++}
+\subsection{De la théorie à la pratique : notre implémentation C++}
 
 Traduire cette théorie mathématique en un programme concret nécessite quelques adaptations. Notre implémentation, librement disponible sur notre dépôt GitHub public au sein du fichier \url{src/analysis/DifferentialSearch.cpp} via la fonction \texttt{run\allowbreak Memory\allowbreak Efficient\allowbreak Algorithm}, gère cette contrainte de manière dynamique tout en maximisant les performances du processeur.
 
@@ -444,7 +471,7 @@ Puisque le nombre de paires formées (et donc de collisions potentielles) évolu
 \paragraph{L'élimination de la table de hachage interne :}
 Pour accélérer le traitement d'un lot et économiser la surcharge mémoire liée aux métadonnées des tables de hachage dynamiques, le programme stocke temporairement les évaluations dans un simple tableau plat et contigu. Une fois le lot entièrement généré, ce tableau est trié en place selon la valeur de la fonction $g_{\gamma}(x)$. Par conséquent, toutes les collisions se retrouvent mécaniquement adjacentes en mémoire. Il suffit alors d'effectuer un unique parcours linéaire du tableau pour les identifier et extraire les candidats. Cette approche s'avère non seulement très économe en espace, mais également extrêmement rapide car elle maximise l'utilisation de la mémoire cache du processeur.
 
-\paragraph{Le Filtre de Fréquence global :}
+\paragraph{Le filtre de fréquence global :}
 Le dernier défi consiste à compter les apparitions d'un candidat $(\alpha, \beta)$ à travers les différents lots, sans recréer le goulot d'étranglement lié à une structure de hachage globale. Pour résoudre ce problème, nous avons opté pour un \textbf{filtre de fréquence} (\textit{Frequency Filter}) pré-alloué de taille fixe (par exemple 1 Go).
 Lorsqu'une collision suggère une clé $(\alpha, \beta)$, celle-ci est hachée et modulo-indexée dans ce grand tableau d'octets. Le compteur de la case correspondante est incrémenté. Ce n'est que si cette case franchit le seuil d'acceptation de l'algorithme fondamental ($n/4$) que la véritable clé $(\alpha, \beta)$ est allouée dans une liste restreinte. Cette liste finale, de très petite taille, est ensuite soumise à la phase de vérification classique.
 
@@ -470,7 +497,7 @@ Cependant, il est crucial de noter qu'aussi bien l'algorithme fondamental que se
 
 Si le chiffrement étudié possède des propriétés algébriques particulières qui empêchent $g_{\gamma}$ de se comporter comme une fonction aléatoire, les garanties mathématiques de détection s'effondrent. Cette dépendance aux hypothèses justifie la nécessité de concevoir un dernier filet de sécurité : un algorithme « pire cas » (\textit{Worst-Case Algorithm}). Bien que plus lourd, ce dernier doit être capable de retrouver ces propriétés statistiques sans formuler la moindre hypothèse sur le comportement structurel de la primitive étudiée.
 
-\section{L'Algorithme « Pire Cas » (\textit{Worst-Case}) : S'affranchir des heuristiques}
+\section{L'algorithme « pire cas » (\textit{worst-case}) : s'affranchir des heuristiques}
 
 Comme évoqué précédemment, les algorithmes fondamental et de compromis reposent sur un pari fort : l'hypothèse que les quatuors corrects se distribuent de manière aléatoire au sein de l'espace des messages. Cependant, si un concepteur malveillant introduit une porte dérobée (\textit{trapdoor}) dans le chiffrement, par exemple, en forçant les paires correctes à se concentrer dans un sous-espace linéaire restreint, l'algorithme fondamental échouera presque systématiquement, car il n'aura testé qu'un ou très peu de substituts $\gamma$. 
 
@@ -512,7 +539,7 @@ Afin de sécuriser le résultat face aux $2^{2n}$ fausses pistes, ils choisissen
 \end{equation*}
 Le paramètre constant $200$ découle directement de cette contrainte de sécurité. En remplaçant $S$ dans notre équation de seuil, on obtient finalement la condition de validation implémentée dans notre code : un candidat est validé s'il obtient plus de $0,28 \cdot \left(\frac{200n}{p}\right) \cdot p = \mathbf{56n}$ votes.
 
-\subsection{Complexités théoriques et Implémentation}
+\subsection{Complexités théoriques et implémentation}
 
 Cette robustesse absolue a un coût. La complexité temporelle globale de l'algorithme s'obtient en multipliant le nombre d'itérations $S$ par la taille du lot $M$ à évaluer à chaque fois :
 \begin{equation*}
@@ -523,7 +550,7 @@ Par rapport à l'algorithme fondamental $\tilde{\mathcal{O}}(2^{n/2} p^{-1})$, c
 
 Notre implémentation C++ de cette méthode, encapsulée dans la fonction \texttt{run\allowbreak Worst\allowbreak Case\allowbreak Algorithm}, exploite pleinement la nature indépendante des itérations $S$. La boucle principale gérant les différents substituts $\gamma$ a été parallélisée. Chaque thread alloue sa propre table de hachage temporaire pour analyser un sous-échantillon $M$. Il ne vient mettre à jour le grand compteur global des votes qu'à la fin de son évaluation. Une fois les $S$ itérations terminées, le programme applique le filtre final des $56n$ votes et exporte les différentielles certifiées.
 
-\subsection{Limites pratiques : Le cumul des contraintes}
+\subsection{Limites pratiques : le cumul des contraintes}
 
 Bien que cette variante offre des garanties théoriques absolues de sécurité, elle cumule en pratique les défauts majeurs des deux algorithmes précédents : une forte consommation de RAM (héritée de l'algorithme fondamental) et une grande lenteur (héritée de l'approche sans mémoire). 
 
@@ -691,7 +718,7 @@ Nous avons limité la RAM à 50 millions d'entrées par lot (environ 1,14 Go). P
 
 Après environ 6 heures de calcul (21 747 secondes), le programme a identifié 6 candidats (voir Tableau~\ref{tab:speck_6tours}). Le premier candidat (\texttt{0x8d0a9d20}) affiche une probabilité mesurée de $0,000145$, se plaçant ainsi devant le candidat (\texttt{0x850a9520}), évalué à $0,000092$. Pourtant, ce dernier correspond à la meilleure caractéristique connue dans la littérature pour 6 tours. Afin de vérifier ce classement et de déterminer s'il s'agissait d'une véritable découverte ou d'un simple biais, nous avons procédé à une vérification globale sur 100 clés aléatoires, en testant $2^{24}$ paires de textes clairs par clé. En moyenne, la probabilité du premier candidat s'effondre à $0,000061$, tandis que celle du candidat de la littérature se stabilise à $0,000114$, confirmant ainsi son statut de meilleur candidat théorique ($2^{-13} \approx 0,000122$). Ce test sur 6 tours valide notre implémentation C++ et montre sa capacité à traiter de grands volumes de données tout en respectant les limites de la mémoire. Il rappelle également qu'une phase de vérification globale reste indispensable pour distinguer les véritables failles cryptographiques des simples erreurs d'évaluation.
 
-\section{Conclusion Générale et Perspectives}
+\section{Conclusion générale et perspectives}
 
 La cryptanalyse différentielle, bien que théorisée depuis plus de trente ans, continue de se heurter à un défi mathématique et physique absolu : l'explosion combinatoire. Au travers de ce Travail d'Étude et de Recherche, notre objectif n'était pas seulement d'étudier la littérature scientifique, mais de confronter les théories de l'état de l'art à la réalité de la programmation logicielle et matérielle.
 
@@ -714,30 +741,30 @@ Enfin, pour surmonter l'augmentation inévitable des temps de calcul liée à l'
 \newpage
 \begin{thebibliography}{99}
 
-    \bibitem{biham}
+    \bibitem{BS91}
     E. Biham \& A. Shamir,
     \textit{Differential Cryptanalysis of DES-like Cryptosystems},
     Journal of Cryptology, vol. 4, n°1, pp. 3--72, 1991.
     \url{https://link.springer.com/article/10.1007/BF00630563}
 
-    \bibitem{oorschot}
+    \bibitem{OW99}
     P. C. van Oorschot \& M. J. Wiener,
     \textit{Parallel Collision Search with Cryptanalytic Applications},
     Journal of Cryptology, vol. 12, n°1, pp. 1--28, 1999.
     \url{https://link.springer.com/article/10.1007/PL00003816}
 
-    \bibitem{dinur}
+    \bibitem{DDKRS23}
     I. Dinur, O. Dunkelman, N. Keller, E. Ronen \& A. Shamir,
     \textit{Efficient Detection of High Probability Statistical Properties of Cryptosystems via Surrogate Differentiation},
     Eurocrypt 2023.
     \url{https://eprint.iacr.org/2023/288.pdf}
 
-    \bibitem{speck}
+    \bibitem{BSSTWW13}
     R. Beaulieu, D. Shors, J. Smith, S. Treatman-Clark, B. Weeks \& L. Wingers,
     \textit{The SIMON and SPECK Families of Lightweight Block Ciphers}, 2013.
     \url{https://eprint.iacr.org/2013/404.pdf}
 
-    \bibitem{github}
+    \bibitem{FGG26}
     A. François, B. Dupré \& B. Guibert,
     \textit{Moteur d'analyse différentielle en C++}, 2026.
     \url{https://github.com/Redak92/cryptanalyse-differentielle}
