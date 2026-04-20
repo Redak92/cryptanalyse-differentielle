@@ -183,32 +183,34 @@ Le pseudo-code suivant résume l'algorithme tel qu'il a été implémenté et op
 \State \textit{// Boucle parallélisée (OpenMP)}
 \For{$\alpha \gets 1$ \textbf{to} $limit - 1$}
     \State Initialiser un tableau $counts$ de taille $limit$ à $0$
+    \State Initialiser une liste vide $candidats$
     \For{$x \gets 0$ \textbf{to} $limit - 1$}
         \State $\beta \gets ftable[x] \oplus ftable[x \oplus \alpha]$
         \State $counts[\beta] \gets counts[\beta] + 1$
+        \textit{// On retient $\beta$ au moment exact où il franchit le seuil}
         \If{$counts[\beta] == minCount + 1$}
-            \State Sauvegarder $(\alpha, \beta, counts[\beta])$
+            \State Ajouter $\beta$ à $candidats$
         \EndIf
+    \EndFor
+    \State \textit{// Sauvegarde finale (boucle uniquement sur les entrées valides)}
+    \For{\textbf{chaque} $\beta$ \textbf{dans} $candidats$}
+        \State Sauvegarder $(\alpha, \beta, counts[\beta])$
     \EndFor
 \EndFor
 \end{algorithmic}
 \end{algorithm}
 
 \subsection{Limites matérielles et stratégies d'adaptation}
-Bien que très efficace sur des petites tailles de bloc, cette implémentation s'est directement heurtée au « mur de la RAM » lors de notre passage à l'échelle. Lors de nos premières tentatives d'exécution de l'algorithme naïf sur Speck 32/64 ($n=32$), nous avons constaté une saturation immédiate de la mémoire vive (16 Go) de nos stations de travail. Le simple fait de vouloir allouer la table des valeurs de $F$ pour des entiers de 64 bits nécessitait théoriquement $34,36$ Go de RAM :  
-\begin{equation*}
-    2^{32} \text{ entrées} \times 8 \text{ octets/entrée} 
-    = 2^{35} \text{ octets} \approx 34{,}36 \text{ Go}
-\end{equation*}
-Ce blocage systématique, se traduisant par un plantage du programme par dépassement de mémoire (\textit{Out-Of-Memory}), nous a forcés à abandonner l'idée d'un stockage complet de cette table. Lorsque la taille du bloc excède ainsi les capacités physiques de la machine, l'algorithme doit impérativement être adapté, ce qui implique de sacrifier la vitesse d'exécution pour préserver la mémoire.
 
-Plusieurs stratégies d'adaptation ont dû être envisagées. La solution la plus radicale pour soulager la mémoire consiste à supprimer totalement la phase de pré-calcul. En ne stockant plus aucun résultat à l'avance, l'algorithme se voit contraint d'évaluer les fonctions de chiffrement à la volée, à chaque nouvelle itération. Si l'empreinte spatiale redevient ainsi minime, le temps d'exécution explose inévitablement, la complexité temporelle repassant à son maximum. 
+Bien que très efficace sur des petites tailles de bloc, cette implémentation s'est directement heurtée au « mur de la RAM » lors de notre passage à l'échelle. Lors de nos premières tentatives d'exécution de l'algorithme naïf sur Speck 32/64 ($n=32$), nous avons constaté une saturation immédiate de la mémoire vive (16~Go) de nos stations de travail. Le simple fait de vouloir allouer la table des valeurs de $F$ nécessitait théoriquement environ $34,36$~Go de RAM. Ce chiffre découle directement de la taille de l'espace des messages : le stockage de $2^{32}$ valeurs, chacune codée sur un entier standard de 8 octets (64 bits), donne très exactement $\frac{2^{32} \times 8}{1024^3} \approx 34,36$~Go.
 
-Une autre option pour réduire l'empreinte mémoire repose sur la désactivation de la parallélisation. En forçant un retour à un mode d'exécution strictement séquentiel, le programme évite l'allocation simultanée de multiples et volumineux tableaux de compteurs par les différents fils d'exécution du processeur. 
+Ce blocage systématique, se traduisant par un plantage du programme par dépassement de mémoire (\textit{Out-Of-Memory}), nous a forcés à abandonner l'idée d'un pré-calcul intégral. Lorsque la taille du bloc excède les capacités physiques de la machine, le programme doit impérativement être adapté pour préserver la mémoire.
 
-Enfin, une dernière solution réside dans le nettoyage de la mémoire à la volée. Plutôt que de conserver l'ensemble des différentielles valides au sein d'une unique structure de données jusqu'à la fin du traitement, l'algorithme affiche immédiatement sur la sortie standard les paires trouvées pour une différence d'entrée donnée. Il purge et réinitialise ensuite intégralement sa mémoire de travail avant de passer à l'analyse de la différence suivante, empêchant de fait toute accumulation fatale de données.
+Plusieurs stratégies ont dû être envisagées. La solution la plus radicale consiste à supprimer totalement la phase de pré-calcul. En ne stockant plus aucun résultat à l'avance, l'algorithme se voit contraint d'évaluer la fonction de chiffrement à la volée pour chaque itération. Si la consommation spatiale redevient ainsi minime, le temps d'exécution s'allonge de façon critique. En effet, bien que la complexité asymptotique des boucles demeure inchangée (toujours de l'ordre de $\mathcal{O}(2^{2n})$ itérations), le remplacement d'un accès direct en mémoire par un appel cryptographique complet démultiplie le coût unitaire de chaque opération.
 
-Malgrès l'ensemble de ces adaptations, notre implémentation naïve est restée incapable de mener à bien une analyse complète sur Speck32/64, confirmant la nécessité d'une approche fondamentalment différente.
+Une autre approche pour réduire l'empreinte mémoire repose sur la désactivation de la parallélisation. En forçant un retour à un mode d'exécution strictement séquentiel, le programme évite l'allocation simultanée de multiples et volumineux tableaux de compteurs par les différents fils d'exécution du processeur. Enfin, une dernière optimisation repose sur le nettoyage de la mémoire à la volée : plutôt que de tout conserver dans une structure globale, l'algorithme affiche immédiatement sur la sortie standard les paires trouvées pour un $\alpha$ donné, purgeant sa mémoire avant de passer à la différence suivante.
+
+Cependant, il est important de souligner que si ces adaptations logicielles permettent d'éviter la saturation de la machine, elles ne résolvent en rien la limitation algorithmique fondamentale. Contourner la contrainte spatiale ne fait que déplacer le problème vers la complexité temporelle : même avec une empreinte mémoire parfaitement maîtrisée, l'exécution des $2^{64}$ itérations requises pour analyser Speck 32/64 exigerait des semaines de calcul sur un ordinateur standard. Ces observations démontrent que la méthode exhaustive, même optimisée, est incapable de passer à l'échelle, ce qui justifie la nécessité de se tourner vers des approches de détection probabilistes.
 
 \section{L'Algorithme de recherche standard : une approche statistique}
 
