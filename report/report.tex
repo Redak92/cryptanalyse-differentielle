@@ -214,25 +214,26 @@ Cependant, il est important de souligner que si ces adaptations logicielles perm
 
 \section{L'Algorithme de recherche standard : une approche statistique}
 
-Bien que l'algorithme exhaustif soit utile pour des paramètres très réduits, sa complexité en $\mathcal{O}(2^{2n})$ devient extrêmement lourde pour des chiffrements traitant des blocs de 32 bits, et totalement impraticable au-delà. Pour pallier cette limitation, une approche naturelle consiste à transformer la recherche déterministe en un problème d'échantillonnage statistique. Cet algorithme est décrit par Dinur et al. comme l'adaptation classique de la construction d'une DDT pour détecter des différentielles de probabilité supérieure à un seuil $p$.
+Bien que l'algorithme exhaustif soit utile pour des paramètres très réduits, sa complexité en $\mathcal{O}(2^{2n})$ le rend strictement impraticable dès que la taille du bloc atteint 32 bits. Pour pallier cette limitation, une approche naturelle consiste à transformer la recherche déterministe en un problème d'échantillonnage statistique. Cet algorithme est décrit par Dinur et al. \cite{DDKRS23} comme l'adaptation classique de la construction d'une DDT pour détecter des différentielles de probabilité supérieure à un seuil $p$.
 
 \subsection{Principes et fondements statistiques : distinguer le signal du bruit}
 
-Plutôt que de parcourir l'intégralité de l'espace des messages, l'algorithme privilégie une stratégie par échantillonnage. Pour chaque différence d'entrée $\alpha$, nous testons un nombre fixe $k$ de paires aléatoires. Cette approche transforme la recherche en un défi statistique où l'objectif est de faire émerger un \og signal \fg{} (une différentielle réelle) d'un \og bruit \fg{} de fond aléatoire.
+Plutôt que de parcourir l'intégralité de l'espace des messages, l'algorithme statistique standard, tel que détaillé à la page 7 de l'article de Dinur \textit{et al.} \cite{DDKRS23}, privilégie une stratégie par échantillonnage. Pour chaque différence d'entrée $\alpha$, nous testons un nombre fixe $k$ de paires aléatoires. Cette approche transforme la recherche en un défi statistique où l'objectif est de faire émerger un \og signal \fg{} (une différentielle réelle) d'un \og bruit \fg{} de fond aléatoire.
 
 \vspace{0.5cm}
 
-Le nombre de succès $X$, représentant le nombre de paires dont la différence de sortie est effectivement $\beta$, suit initialement une loi binomiale $\mathcal{B}(k, p)$. Cependant, face à un nombre de tirages $k$ élevé et une probabilité de succès $p$ très faible, nous basculons dans le domaine de la \textbf{loi des événements rares}. La distribution de $X$ peut alors être approximée par une \textbf{loi de Poisson} $\mathcal{P}(\lambda)$. Dans ce modèle, le paramètre $\lambda$ représente l'espérance mathématique du nombre de succès, soit $\lambda = k \times p$. La probabilité d'obtenir exactement $x$ succès est donnée par la formule $P(X = x) = \frac{\lambda^x e^{-\lambda}}{x!}$.
+Sous l'hypothèse d'indépendance des paires évaluées, le nombre de succès $X$, représentant le nombre de paires dont la différence d'entrée est $\alpha$ et la différence de sortie est $\beta$, peut être modélisé par une loi binomiale $\mathcal{B}(k, p)$. Cependant, face à un nombre de tirages $k$ élevé et une probabilité de succès $p$ très faible, nous basculons dans le domaine de la \textbf{loi des événements rares}. La distribution de $X$ peut alors être approximée par une \textbf{loi de Poisson} $\mathcal{P}(\lambda)$. Dans ce modèle, le paramètre $\lambda$ représente l'espérance mathématique du nombre de succès, soit $\lambda = k \times p$. La probabilité d'obtenir exactement $x$ succès est donnée par la formule :
+$$P(X = x) = \frac{\lambda^x e^{-\lambda}}{x!}$$
 
-Pour garantir que nous ne passerons pas à côté d'une différentielle significative, les auteurs fixent $k = 4/p$ ($\lambda = 4$). La probabilité de détection se calcule par le complémentaire :
+Afin d'assurer une forte probabilité de détection pour toute différentielle significative (et ainsi minimiser le risque de faux négatif), les auteurs fixent $k = 4/p$ (soit $\lambda = 4$). La probabilité de succès se calcule alors par le complémentaire :
 \begin{equation*}
     P(X \ge 2) = 1 - (P(X = 0) + P(X = 1)) = 1 - \left(\frac{\lambda^0 e^{-\lambda}}{0!} + \frac{\lambda^1 e^{-\lambda}}{1!}\right) = 1 - e^{-\lambda}(1+\lambda)
 \end{equation*}
-Pour $\lambda = 4$, on obtient $1 - 5e^{-4} \approx 0,9085$, validant le seuil de confiance de 90 \% de la littérature.
+Pour $\lambda = 4$, on obtient $1 - 5e^{-4} \approx 0,9085$, ce qui permet d'atteindre le seuil de confiance de $90\,\%$ visé par la littérature.
 
 \vspace{0.5cm}
 
-Le choix du critère $count \ge 2$ est crucial pour séparer le signal du bruit. Pour une permutation aléatoire, la probabilité d'une collision fortuite est extrêmement faible ($p_{rand} = \frac{1}{2^n - 1}$). Avec Speck 64 ($n=64$) et $p=2^{-13}$, l'espérance du bruit $\lambda_{rand} = k \times p_{rand}$ est d'environ $2^{-49}$.
+Le choix du seuil de validation $count \ge 2$ est crucial pour filtrer les faux positifs. En effet, si l'on modélise le chiffrement par une permutation aléatoire, la probabilité qu'une paire de messages présente la différence de sortie $\beta$ par pur hasard est extrêmement faible ($p_{rand} = \frac{1}{2^n - 1}$). À titre d'exemple, pour l'analyse de Speck 64 ($n=64$) ciblant une probabilité $p=2^{-13}$, l'espérance du nombre de paires accidentelles, notée $\lambda_{rand} = k \times p_{rand}$, n'est que d'environ $2^{-49}$.
 
 Pour évaluer la probabilité qu'un tel bruit génère un faux positif, nous utilisons le \textbf{développement limité de Taylor} de l'exponentielle au voisinage de zéro.
 
@@ -245,51 +246,92 @@ En négligeant le terme en $\lambda^3$ (d'ordre supérieur et donc totalement in
     P(X \ge 2) \approx 1 - \left(1 - \frac{\lambda^2}{2}\right) = \frac{\lambda^2}{2}
 \end{equation*}
 
-Dans notre exemple, cette probabilité de faux signal chute à environ $2^{-99}$, ce qui rend toute collision accidentelle statistiquement impossible et prouve l'existence d'une structure non aléatoire.
+Dans notre exemple, cette probabilité de faux signal chute à environ $2^{-99}$, ce qui rend l'apparition d'une telle paire accidentelle statistiquement peu probable et prouve que les faux positifs sont très rares.
 
+\subsection{Pseudo-code de notre implémentation}
+
+Le pseudo-code suivant résume l’algorithme tel qu’il a été implémenté et optimisé dans notre code source.
+
+\begin{algorithm}[H]
+\caption{Recherche Statistique Standard par Échantillonnage}
+\label{algo:standard_stat}
+\begin{algorithmic}[1]
+\Statex \textbf{Entrées :} $F$ (fonction de chiffrement), $n$ (taille du bloc), $p$ (seuil de probabilité)
+\Statex \textbf{Sortie :} Liste des candidats différentiels $(\alpha, \beta, \text{occurrences})$
+\State $limit \gets 2^n$
+\State $k \gets 4 / p$ \Comment{Nombre de paires aléatoires à évaluer par $\alpha$}
+\State $expectedHits \gets k \times p$
+\State $minThreshold \gets \max(3, \frac{expectedHits}{2})$ \Comment{Calcul dynamique du seuil de filtrage}
+\State Initialiser une liste globale $resultats$
+\State \textit{// Boucle parallélisée (répartition sur les cœurs du processeur)}
+\For{$\alpha \gets 1$ \textbf{to} $limit - 1$}
+    \State Initialiser une table de hachage locale $counts$ (vide)
+    \State Initialiser une liste locale $candidats$
+    
+    \State \textit{// Phase d'échantillonnage aléatoire}
+    \For{$i \gets 1$ \textbf{to} $k$}
+        \State $x \gets \text{Générer\_Bloc\_Aléatoire}(n)$
+        \State $y \gets x \oplus \alpha$
+        \State $\beta \gets F(x) \oplus F(y)$
+        \State $counts[\beta] \gets counts[\beta] + 1$
+        
+        \State \textit{// CRITÈRE DE FILTRAGE : Ajout direct au franchissement du seuil}
+        \If{$counts[\beta] == minThreshold + 1$}
+            \State Ajouter $\beta$ à $candidats$
+        \EndIf
+    \EndFor
+    
+    \State \textit{// Sauvegarde finale (uniquement sur les entrées valides de ce sous-lot)}
+    \For{\textbf{chaque} $\beta$ \textbf{dans} $candidats$}
+        \State Ajouter $(\alpha, \beta, counts[\beta])$ à $resultats$
+    \EndFor
+\EndFor
+\State \textbf{Retourner} $resultats$
+\end{algorithmic}
+\end{algorithm}
 \subsection{Analyse de l'implémentation C++ et limites}
 
 Notre implémentation, disponible dans le fichier \url{src/analysis/DifferentialSearch.cpp}, parallélise l'itération sur les différences d'entrée $\alpha$ en répartissant la charge sur plusieurs fils d'exécution. Contrairement à l'algorithme exhaustif, l'utilisation d'une table de hachage dynamique permet de ne conserver que les différences de sortie effectivement rencontrées, optimisant ainsi considérablement l'empreinte mémoire.
 
-Toutefois, ce moteur reste limité par le facteur $2^n$. Pour un chiffrement comme \textbf{Speck 64/128}, l'algorithme doit itérer, à minima, $2^{64}$ fois, ce qui est prohibitif sur un ordinateur personnel.
+Toutefois, comme le met en évidence la boucle principale du pseudo-code itérant sur l'ensemble des différences d'entrée $\alpha$, cette approche reste limitée par le facteur $2^n$. Pour un chiffrement comme \textbf{Speck 64/128}, l'algorithme doit itérer, à minima, $2^{64}$ fois, ce qui est prohibitif sur un ordinateur personnel.
 
 C'est cette barrière qui justifie l'introduction de l'algorithme probabiliste présenté dans l'article. En s'appuyant sur le \textbf{paradoxe des anniversaires}, ce dernier permet de convertir la recherche de différentielles en une recherche de collisions, abaissant la complexité à l'ordre de $2^{n/2} \cdot p^{-1}$.
 
 \section{L'Algorithme fondamental : l'exploitation des collisions}
 
-Pour franchir la barrière du $2^n$, cet algorithme délaisse l'approche par différence d'entrée fixe pour s'appuyer sur la \textbf{différenciation par substitut}. L'objectif est de détecter toutes les différentielles $\alpha \rightarrow \beta$ de probabilité $p$ avec une complexité temporelle et spatiale réduite à l'ordre de $\tilde{O}(2^{n/2} \cdot p^{-1})$.
+Pour franchir la barrière du $2^n$, cet algorithme délaisse l'approche par différence d'entrée fixe pour s'appuyer sur la \textbf{différentielle de substitut}. L'objectif est de détecter toutes les différentielles $\alpha \rightarrow \beta$ de probabilité $p$ avec une complexité temporelle et spatiale réduite à l'ordre de $\tilde{O}(2^{n/2} \cdot p^{-1})$.
 
-\subsection{Le concept de différenciation par substitut}
+\subsection{Le concept de différentielle de substitut}
 
-La nouvelle approche du papier consiste à choisir une différence $\gamma$ arbitraire et non nulle, appelée \textbf{substitut}, totalement indépendante de la différence $\alpha$ recherchée. On définit la fonction $g_{\gamma}$ comme la dérivée de $f$ dans la direction du substitut :
+La nouvelle approche du papier consiste à choisir une différence $\gamma$ arbitraire et non nulle, appelée \textbf{substitut}, totalement indépendante de la différence $\alpha$ recherchée. On définit la fonction $g_{\gamma}$ comme la dérivée de $F$ dans la direction du substitut :
 \begin{equation*}
-    g_{\gamma}(x) = f(x) \oplus f(x \oplus \gamma)
+    g_{\gamma}(x) = F(x) \oplus F(x \oplus \gamma)
 \end{equation*}
 
-Pour appréhender ce mécanisme, il convient d'analyser la différence fondamentale de traitement entre les deux méthodes. L'algorithme standard nécessite une évaluation exhaustive : chaque différence d'entrée $\alpha$ potentielle doit être testée individuellement, ce qui impose une complexité temporelle prohibitive de l'ordre de $\mathcal{O}(2^n)$. À l'inverse, la différenciation par substitut permet d'évaluer l'intégralité des directions $\alpha$ simultanément en appliquant un filtre global sur l'espace des messages. Plutôt que de chercher directement la différence de sortie $\beta$, la fonction $g_{\gamma}$ associe une signature mathématique caractéristique à chaque message évalué. La détection d'une collision entre deux de ces signatures révèle alors l'existence d'une structure différentielle sous-jacente (la direction $\alpha$), s'affranchissant ainsi de la nécessité d'itérer de manière systématique sur chaque différence d'entrée.
+Pour appréhender ce mécanisme, il convient d'analyser la différence fondamentale de traitement entre les deux méthodes. L'algorithme standard nécessite une évaluation exhaustive : chaque différence d'entrée $\alpha$ potentielle doit être testée individuellement, ce qui impose une complexité temporelle prohibitive de l'ordre de $\mathcal{O}(2^n)$. À l'inverse, la différentielle de substitut permet d'évaluer l'intégralité des directions $\alpha$ simultanément en appliquant un filtre global sur l'espace des messages. Plutôt que de chercher directement la différence de sortie $\beta$, la fonction $g_{\gamma}$ associe une signature mathématique caractéristique à chaque message évalué. La détection d'une collision entre deux de ces signatures révèle alors l'existence d'une structure différentielle sous-jacente (la direction $\alpha$), s'affranchissant ainsi de la nécessité d'itérer de manière systématique sur chaque différence d'entrée.
 
 \subsection{Le mécanisme du « quatuor correct » (\textit{right quartet})}
 
 Le succès de l'algorithme repose sur une structure géométrique reliant quatre messages, formant ce que les auteurs appellent un quatuor $\{x, x \oplus \alpha, x \oplus \gamma, x \oplus \alpha \oplus \gamma\}$. La structure de ce quatuor et la propagation des différences à travers la fonction de chiffrement sont illustrées par le schéma de flux de la Figure~\ref{fig:right_quartet}.
 
-Un tel quatuor est dit \textbf{correct} pour la différentielle $\alpha \rightarrow \beta$ si le couple initial $(x, x \oplus \alpha)$ et le couple translaté par le substitut $(x \oplus \gamma, x \oplus \gamma \oplus \alpha)$ satisfont simultanément cette différentielle. Autrement dit, on doit observer à la fois $f(x) \oplus f(x \oplus \alpha) = \beta$ et $f(x \oplus \gamma) \oplus f(x \oplus \gamma \oplus \alpha) = \beta$.
+Un tel quatuor est dit \textbf{correct} pour la différentielle $\alpha \rightarrow \beta$ si le couple initial $(x, x \oplus \alpha)$ et le couple translaté par le substitut $(x \oplus \gamma, x \oplus \gamma \oplus \alpha)$ satisfont simultanément cette différentielle. Autrement dit, on doit observer à la fois $F(x) \oplus F(x \oplus \alpha) = \beta$ et $F(x \oplus \gamma) \oplus F(x \oplus \gamma \oplus \alpha) = \beta$.
 
 \begin{figure}[htbp]
     \centering
     % On importe le schéma TikZ depuis le dossier figures
     \resizebox{\textwidth}{!}{\input{figures/schema_quatuor.tex}}
-    \caption{Mécanisme du quatuor correct et de la double différenciation. En posant $g_{\gamma}(x) = f(x) \oplus f(x \oplus \gamma)$, l'existence de deux différentielles $\alpha \rightarrow \beta$ (flèches bleues) entraîne mathématiquement une collision $g_{\gamma}(x) \oplus g_{\gamma}(x \oplus \alpha) = 0$, quelle que soit la valeur de $\beta$.}
+    \caption{Mécanisme du quatuor correct et de la double différenciation. En posant $g_{\gamma}(x) = F(x) \oplus F(x \oplus \gamma)$, l'existence de deux différentielles $\alpha \rightarrow \beta$ (flèches bleues) entraîne mathématiquement une collision $g_{\gamma}(x) \oplus g_{\gamma}(x \oplus \alpha) = 0$, quelle que soit la valeur de $\beta$.}
     \label{fig:right_quartet}
 \end{figure}
 
 Comme le montre la Figure~\ref{fig:right_quartet}, la fonction $g_{\gamma}$ permet d'annuler la valeur de $\beta$ par le biais de cette double différenciation. En calculant la différence entre deux sorties de $g_{\gamma}$ espacées de $\alpha$, nous obtenons :
 \begin{align*}
-    g_{\gamma}(x) \oplus g_{\gamma}(x \oplus \alpha) &= \left[ f(x) \oplus f(x \oplus \gamma) \right] \oplus \left[ f(x \oplus \alpha) \oplus f(x \oplus \alpha \oplus \gamma) \right] \\
-    &= \left[ f(x) \oplus f(x \oplus \alpha) \right] \oplus \left[ f(x \oplus \gamma) \oplus f(x \oplus \alpha \oplus \gamma) \right] \\
+    g_{\gamma}(x) \oplus g_{\gamma}(x \oplus \alpha) &= \left[ F(x) \oplus F(x \oplus \gamma) \right] \oplus \left[ F(x \oplus \alpha) \oplus F(x \oplus \alpha \oplus \gamma) \right] \\
+    &= \left[ F(x) \oplus F(x \oplus \alpha) \right] \oplus \left[ F(x \oplus \gamma) \oplus F(x \oplus \alpha \oplus \gamma) \right] \\
     &= \beta \oplus \beta = 0
 \end{align*}
 
-Cette égalité fondamentale implique que $g_{\gamma}(x) = g_{\gamma}(x \oplus \alpha)$, créant ainsi une \textbf{collision} dans la table de hachage de l'algorithme. Le point crucial de cette méthode est que la collision se produit \textbf{quelle que soit la valeur de $\beta$}. L'algorithme détecte donc la différence d'entrée $\alpha$ simplement en cherchant des doublons dans les sorties de $g_{\gamma}$, et ne calcule la différence de sortie $\beta$ qu'a posteriori via l'opération $\beta = f(x) \oplus f(x \oplus \alpha)$.
+Cette égalité fondamentale implique que $g_{\gamma}(x) = g_{\gamma}(x \oplus \alpha)$, créant ainsi une \textbf{collision} dans la table de hachage de l'algorithme. Le point crucial de cette méthode est que la collision se produit \textbf{quelle que soit la valeur de $\beta$}. L'algorithme détecte donc la différence d'entrée $\alpha$ simplement en cherchant des doublons dans les sorties de $g_{\gamma}$, et ne calcule la différence de sortie $\beta$ qu'a posteriori via l'opération $\beta = F(x) \oplus F(x \oplus \alpha)$.
 
 \subsection{Gain de complexité et dimensionnement de l'échantillon M}
 
@@ -367,7 +409,7 @@ Pour qu'un tel faux positif soit validé, il faudrait qu'il produise plus de $n/
 
 Le pseudo-code détaillé de cet algorithme fondamental est fourni à la page 9 de l'article. Nous l'avons intégralement implémenté dans notre programme sous la fonction \texttt{run\allowbreak Fundamental\allowbreak Algorithm}, dont le code source C++ est librement accessible sur notre dépôt GitHub public, au sein du fichier \url{src/analysis/DifferentialSearch.cpp}.
 
-Grâce à cette approche exploitant la différenciation par substitut, la complexité temporelle de la recherche est drastiquement abaissée à $\mathcal{O}(n \cdot 2^{n/2} \cdot p^{-1})$. Tout au long du développement, nous avons dû faire des choix architecturaux pour maximiser la vitesse d'exécution de cette implémentation. L'une de nos optimisations principales concerne le stockage et l'indexation des candidats différentiels $(\alpha, \beta)$. Dans les algorithmes de recherche de collisions, le programme doit constamment stocker, chercher et compter les occurrences des couples d'entrée-sortie. Représenter ces informations sous forme de paires d'objets distincts exigerait des fonctions de hachage complexes, ce qui introduirait une surcharge de calcul non négligeable à l'échelle de millions d'accès mémoire par seconde.
+Grâce à cette approche exploitant la différentielle de substitut, la complexité temporelle de la recherche est drastiquement abaissée à $\mathcal{O}(n \cdot 2^{n/2} \cdot p^{-1})$. Tout au long du développement, nous avons dû faire des choix architecturaux pour maximiser la vitesse d'exécution de cette implémentation. L'une de nos optimisations principales concerne le stockage et l'indexation des candidats différentiels $(\alpha, \beta)$. Dans les algorithmes de recherche de collisions, le programme doit constamment stocker, chercher et compter les occurrences des couples d'entrée-sortie. Représenter ces informations sous forme de paires d'objets distincts exigerait des fonctions de hachage complexes, ce qui introduirait une surcharge de calcul non négligeable à l'échelle de millions d'accès mémoire par seconde.
 
 Pour contourner ce problème et accélérer les traitements, nous avons opté pour une technique de concaténation binaire. Le principe consiste à fusionner la différence d'entrée $\alpha$ et la différence de sortie $\beta$ au sein d'un seul et unique entier non signé de 64 bits. Mathématiquement, cette fusion s'opère en décalant les bits de $\alpha$ vers la gauche pour les placer sur la moitié forte de l'entier, puis en appliquant une disjonction logique (\text{OU} binaire) avec $\beta$ sur la moitié faible :
 \begin{equation*}
@@ -735,7 +777,7 @@ La cryptanalyse différentielle, bien que théorisée depuis plus de trente ans,
 
 Le développement de notre bibliothèque C++ nous a permis d'explorer l'intégralité du spectre algorithmique. Nous avons d'abord implémenté les méthodes de recherche par force brute, dites naïves. Bien que ces dernières se révèlent efficaces sur des « chiffrements jouets » (notamment grâce à une parallélisation triviale sur 16 bits), leur complexité spatio-temporelle en $\mathcal{O}(2^{2n})$ et $\mathcal{O}(2^n \cdot p^{-1})$ les condamne définitivement face à l'augmentation de la taille du bloc. L'effondrement de l'algorithme naïf optimisé sur Speck 32/64, nécessitant près de 3 heures de calcul pour analyser une simple caractéristique sur 3 tours, illustre parfaitement le « mur de la scalabilité ».
 
-Pour briser ce mur, l'adoption de l'approche fondamentale de l'article, basée sur la différenciation par substitut et le paradoxe des anniversaires, marque une avancée algorithmique majeure. En réduisant la complexité temporelle à l'ordre de $\mathcal{O}(2^{n/2} \cdot p^{-1})$, cet algorithme est parvenu à expédier la même analyse sur Speck en moins de 2 secondes, représentant une accélération d'un facteur 5447.
+Pour briser ce mur, l'adoption de l'approche fondamentale de l'article, basée sur la différentielle de substitut et le paradoxe des anniversaires, marque une avancée algorithmique majeure. En réduisant la complexité temporelle à l'ordre de $\mathcal{O}(2^{n/2} \cdot p^{-1})$, cet algorithme est parvenu à expédier la même analyse sur Speck en moins de 2 secondes, représentant une accélération d'un facteur 5447.
 
 Cependant, nos expérimentations ont également mis en lumière le principal point faible de cette puissance de calcul : l'empreinte mémoire. Atteindre des différentielles de l'ordre de $p=2^{-9}$ sur 32 bits requiert déjà plusieurs gigaoctets de mémoire vive, rendant l'algorithme fondamental pur inexploitable pour des paramètres de sécurité modernes (64 ou 128 bits). L'implémentation de la variante de compromis temps-mémoire, s'appuyant sur l'échantillonnage par lots et les filtres de fréquence, s'est avérée être la solution indispensable. En échangeant délibérément du temps de calcul contre de l'espace RAM, une dégradation quadratique maîtrisée et modélisée, nous avons prouvé qu'il est possible de faire aboutir des recherches complexes sur des ordinateurs personnels standards.
 
