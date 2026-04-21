@@ -15,6 +15,9 @@
 \usepackage{booktabs}
 \usepackage{tikz}
 \usepackage{float}
+\usepackage{amsthm}
+\newtheorem{definition}{Définition}
+\newtheorem{prop}{Propriété}
 
 \usetikzlibrary{arrows.meta, positioning, calc, fit}
 
@@ -308,19 +311,36 @@ La nouvelle approche du papier consiste à choisir une différence $\gamma$ arbi
     g_{\gamma}(x) = F(x) \oplus F(x \oplus \gamma)
 \end{equation*}
 
-Pour appréhender ce mécanisme, il convient d'analyser la différence fondamentale de traitement entre les deux méthodes. L'algorithme standard nécessite une évaluation exhaustive : chaque différence d'entrée $\alpha$ potentielle doit être testée individuellement, ce qui impose une complexité temporelle prohibitive de l'ordre de $\mathcal{O}(2^n)$. À l'inverse, la différentielle de substitut permet d'évaluer l'intégralité des directions $\alpha$ simultanément en appliquant un filtre global sur l'espace des messages. Plutôt que de chercher directement la différence de sortie $\beta$, la fonction $g_{\gamma}$ associe une signature mathématique caractéristique à chaque message évalué. La détection d'une collision entre deux de ces signatures révèle alors l'existence d'une structure différentielle sous-jacente (la direction $\alpha$), s'affranchissant ainsi de la nécessité d'itérer de manière systématique sur chaque différence d'entrée.
+Pour appréhender ce gain de complexité, il convient de formaliser la distinction mathématique entre les deux approches :
 
-\subsection{Le mécanisme du « quatuor correct » (\textit{right quartet})}
+\begin{itemize}
+    \item \textbf{L'approche standard (Recherche itérative) :} 
+    La différence d'entrée $\alpha$ est fixée \textit{a priori}. L'algorithme cherche des paires satisfaisant :
+    $$F(x) \oplus F(x \oplus \alpha) = \beta$$
+    Cette condition impose de boucler séquentiellement sur l'intégralité de l'espace des différences d'entrée, soit $\forall \alpha \in \{0, 1\}^n \setminus \{0\}$, entraînant une complexité en $\mathcal{O}(2^n)$.
 
-Le succès de l'algorithme repose sur une structure géométrique reliant quatre messages, formant ce que les auteurs appellent un quatuor $\{x, x \oplus \alpha, x \oplus \gamma, x \oplus \alpha \oplus \gamma\}$. La structure de ce quatuor et la propagation des différences à travers la fonction de chiffrement sont illustrées par le schéma de flux de la Figure~\ref{fig:right_quartet}.
+    \item \textbf{La différentielle de substitut (Recherche de collisions) :} 
+    L'algorithme utilise $g_{\gamma}(x) = F(x) \oplus F(x \oplus \gamma)$ comme signature. Au lieu de fixer $\alpha$, on cherche simplement une collision entre deux messages $x$ et $x'$ :
+    $$g_{\gamma}(x) = g_{\gamma}(x')$$
+    En développant cette égalité, on obtient :
+    $$F(x) \oplus F(x \oplus \gamma) = F(x') \oplus F(x' \oplus \gamma)$$
+    Si l'on pose $\alpha = x \oplus x'$, la différence d'entrée $\alpha$ se révèle naturellement d'elle-même comme une conséquence de la collision.
+\end{itemize}
 
-Un tel quatuor est dit \textbf{correct} pour la différentielle $\alpha \rightarrow \beta$ si le couple initial $(x, x \oplus \alpha)$ et le couple translaté par le substitut $(x \oplus \gamma, x \oplus \gamma \oplus \alpha)$ satisfont simultanément cette différentielle. Autrement dit, on doit observer à la fois $F(x) \oplus F(x \oplus \alpha) = \beta$ et $F(x \oplus \gamma) \oplus F(x \oplus \gamma \oplus \alpha) = \beta$.
+Grâce à cette formulation, il n'est plus nécessaire d'itérer sur chaque $\alpha$. Le problème se réduit à une simple recherche de collisions globales sur $g_{\gamma}$, ce qui permet d'exploiter le paradoxe des anniversaires et de faire chuter la complexité temporelle à l'ordre de $\tilde{\mathcal{O}}(2^{n/2})$.
+
+\subsection{Le mécanisme du « quadruplet correct » (\textit{right quartet})}
+
+Le succès de l'algorithme repose sur une structure géométrique reliant quatre messages, formant ce que les auteurs appellent un quadruplet $\{x, x \oplus \alpha, x \oplus \gamma, x \oplus \alpha \oplus \gamma\}$. La propagation des différences au sein de ce quadruplet, à travers la fonction de chiffrement, est illustrée par le schéma de la Figure~\ref{fig:right_quartet}.
+
+\begin{definition}[Quadruplet correct]
+Un tel quadruplet est dit \textbf{correct} pour la différentielle $\alpha \rightarrow \beta$ si le couple initial $(x, x \oplus \alpha)$ et le couple translaté par le substitut $(x \oplus \gamma, x \oplus \gamma \oplus \alpha)$ satisfont simultanément cette différentielle. Autrement dit, l'on doit observer à la fois $F(x) \oplus F(x \oplus \alpha) = \beta$ et $F(x \oplus \gamma) \oplus F(x \oplus \gamma \oplus \alpha) = \beta$.
+\end{definition}
 
 \begin{figure}[htbp]
     \centering
-    % On importe le schéma TikZ depuis le dossier figures
-    \resizebox{\textwidth}{!}{\input{figures/schema_quatuor.tex}}
-    \caption{Mécanisme du quatuor correct et de la double différenciation. En posant $g_{\gamma}(x) = F(x) \oplus F(x \oplus \gamma)$, l'existence de deux différentielles $\alpha \rightarrow \beta$ (flèches bleues) entraîne mathématiquement une collision $g_{\gamma}(x) \oplus g_{\gamma}(x \oplus \alpha) = 0$, quelle que soit la valeur de $\beta$.}
+    \resizebox{\textwidth}{!}{\input{figures/schema_quadruplet.tex}}
+    \caption{Mécanisme du quadruplet correct et de la double différenciation. En posant $g_{\gamma}(x) = F(x) \oplus F(x \oplus \gamma)$, le fait que les couples $(x, x \oplus \alpha)$ et $(x \oplus \gamma, x \oplus \alpha \oplus \gamma)$ soient des paires correctes pour la différentielle $\alpha \rightarrow \beta$ (flèches bleues) entraîne mathématiquement une collision $g_{\gamma}(x) \oplus g_{\gamma}(x \oplus \alpha) = 0$, et ce quelle que soit la valeur de $\beta$.}
     \label{fig:right_quartet}
 \end{figure}
 
@@ -331,17 +351,27 @@ Comme le montre la Figure~\ref{fig:right_quartet}, la fonction $g_{\gamma}$ perm
     &= \beta \oplus \beta = 0
 \end{align*}
 
-Cette égalité fondamentale implique que $g_{\gamma}(x) = g_{\gamma}(x \oplus \alpha)$, créant ainsi une \textbf{collision} dans la table de hachage de l'algorithme. Le point crucial de cette méthode est que la collision se produit \textbf{quelle que soit la valeur de $\beta$}. L'algorithme détecte donc la différence d'entrée $\alpha$ simplement en cherchant des doublons dans les sorties de $g_{\gamma}$, et ne calcule la différence de sortie $\beta$ qu'a posteriori via l'opération $\beta = F(x) \oplus F(x \oplus \alpha)$.
+Cette égalité fondamentale implique que $g_{\gamma}(x) = g_{\gamma}(x \oplus \alpha)$, créant ainsi une \textbf{collision} directe sur les sorties de la fonction. Le point crucial de cette méthode est que la collision se produit \textbf{quelle que soit la valeur de $\beta$}. L'algorithme détecte donc la différence d'entrée $\alpha$ simplement en cherchant des doublons dans les sorties de $g_{\gamma}$, et ne calcule la différence de sortie $\beta$ qu'a posteriori via l'opération $\beta = F(x) \oplus F(x \oplus \alpha)$.
 
-\subsection{Gain de complexité et dimensionnement de l'échantillon M}
+Cette dérivation nous permet de poser le résultat suivant, qui constitue le cœur de l'efficacité de l'algorithme :
 
-Maintenant que nous savons qu'une différentielle se manifeste par une collision dans $g_{\gamma}$, la question centrale de l'algorithme devient : combien de messages aléatoires, que nous noterons $M$, devons-nous générer et évaluer pour observer cette collision avec certitude ? 
+\begin{prop}[Indépendance de la collision]
+Soit un quadruplet $\{x, x \oplus \alpha, x \oplus \gamma, x \oplus \alpha \oplus \gamma\}$. Si ce quadruplet est correct pour une différentielle $\alpha \rightarrow \beta$, alors il existe nécessairement une collision pour la fonction $g_\gamma$ :
+\begin{equation*}
+    g_{\gamma}(x) = g_{\gamma}(x \oplus \alpha)
+\end{equation*}
+Cette égalité est indépendante de la valeur de $\beta$, ce qui permet de détecter la direction $\alpha$ sans connaissance préalable de la différence de sortie.
+\end{prop}
 
-C'est ici qu'intervient le \textbf{paradoxe des anniversaires}. Dans l'approche standard, un message a une probabilité $p$ de satisfaire la différentielle. Dans cette nouvelle approche, puisqu'un quatuor correct exige que deux couples distincts satisfassent simultanément la propriété, un message aléatoire $x$ a une probabilité $p^2$ d'appartenir à un tel quatuor.
+\subsection{Gain de complexité et dimensionnement de l'échantillon $M$}
 
-Pour garantir la détection d'une différentielle réelle, il est donc nécessaire de collecter un échantillon de taille $M$ suffisamment large pour qu'un nombre significatif de quatuors corrects (et donc de collisions) apparaisse. Plus précisément, les auteurs fixent l'objectif d'obtenir une espérance de $E = n/2$ collisions pour une différentielle de probabilité $p$.
+Maintenant que nous avons établi qu'un quadruplet correct engendre nécessairement une collision dans $g_{\gamma}$ (bien que la réciproque soit fausse en raison du bruit généré par des collisions purement aléatoires), la question centrale de l'algorithme devient : combien de messages aléatoires, que nous noterons $M$, devons-nous générer pour extraire ce signal avec certitude ?
 
-La dérivation de cette quantité $M$ découle directement des principes probabilistes fondamentaux. Avec un ensemble de $M$ messages, il est possible de former approximativement $\frac{M^2}{2}$ paires distinctes $(x_i, x_j)$. Pour une paire donnée, la probabilité que la différence $x_i \oplus x_j$ corresponde exactement à l'unique valeur $\alpha$ recherchée est de $2^{-n}$. De plus, sous l'hypothèse d'indépendance, la probabilité que les deux couples formés par ce quatuor satisfassent simultanément la différentielle est égale à $p^2$. Par conséquent, l'espérance du nombre de collisions suggérant la bonne différentielle s'exprime comme le produit de ces facteurs :
+C'est ici qu'intervient le \textbf{paradoxe des anniversaires}. Dans l'approche standard, une paire de messages a une probabilité $p$ de satisfaire la différentielle. Dans cette nouvelle approche, sous \textbf{l'hypothèse d'indépendance} (postulant que la probabilité que le couple translaté satisfasse la propriété est indépendante de celle du couple initial), un message aléatoire $x$ a une probabilité $p^2$ d'appartenir à un quadruplet correct.
+
+Pour garantir la détection d'une différentielle, il est donc nécessaire de collecter un échantillon de taille $M$ suffisamment large. Les auteurs fixent l'objectif d'obtenir une espérance de $E = n/2$ collisions engendrées par la bonne différentielle. Ce paramètre $n/2$ n'est pas choisi arbitrairement : il permet (via une modélisation par la loi de Poisson) de fixer un seuil de détection à $n/4$. Ce dimensionnement lié à la taille du bloc garantit un taux de réussite supérieur à $99\,\%$ pour les différentielles réelles, tout en rendant la probabilité d'accepter un faux positif négligeable (strictement inférieure à $2^{-n}$).
+
+Avec un ensemble de $M$ messages, il est possible de former approximativement $\frac{M^2}{2}$ paires distinctes $(x_i, x_j)$. Pour une paire donnée, la probabilité que la différence $x_i \oplus x_j$ corresponde exactement à la valeur $\alpha$ recherchée est de $2^{-n}$. De plus, sous l'hypothèse d'indépendance, la probabilité que les deux couples formés par ce quadruplet satisfassent simultanément la différentielle est égale à $p^2$. Par conséquent, l'espérance du nombre de collisions suggérant la bonne différentielle s'exprime comme le produit de ces facteurs :
 \begin{equation*}
     E[\text{Collisions}] = \frac{M^2}{2} \cdot \frac{1}{2^n} \cdot p^2
 \end{equation*}
@@ -359,7 +389,7 @@ Une fois l'échantillon $M$ généré, l'algorithme s'appuie sur trois seuils st
 
 \paragraph{Phase de détection : le seuil $n/4$}
 
-Pour une vraie différentielle de probabilité $p$, l'espérance du nombre de collisions (quatuors corrects) parmi les $M$ messages évalués est $\lambda = n/2$. Fondamentalement, la détection de chaque quatuor correspond à une épreuve de Bernoulli indépendante, ce qui signifie que le nombre total de collisions observées, que nous noterons $X$, suit rigoureusement une \textbf{loi binomiale}. Cependant, face au nombre gigantesque de tirages (l'espace des messages) et à la rareté d'un succès (la probabilité $p^2$ étant infime), cette distribution binomiale s'approxime parfaitement par une \textbf{loi de Poisson} de paramètre $\lambda = n/2$. On note ainsi :
+Pour une vraie différentielle de probabilité $p$, l'espérance du nombre de collisions (quadruplets corrects) parmi les $M$ messages évalués est $\lambda = n/2$. Fondamentalement, la détection de chaque quadruplet correspond à une épreuve de Bernoulli indépendante, ce qui signifie que le nombre total de collisions observées, que nous noterons $X$, suit rigoureusement une \textbf{loi binomiale}. Cependant, face au nombre gigantesque de tirages (l'espace des messages) et à la rareté d'un succès (la probabilité $p^2$ étant infime), cette distribution binomiale s'approxime par une \textbf{loi de Poisson} de paramètre $\lambda = n/2$. On note ainsi :
 \begin{equation*}
     X \sim \mathcal{P}\left(\frac{n}{2}\right)
 \end{equation*}
@@ -371,12 +401,12 @@ L'algorithme configure son filtre pour ne conserver que les candidats $(\alpha, 
 
 L'évaluation exacte de cette somme finie montre que l'erreur s'effondre très rapidement à mesure que la taille du bloc $n$ augmente. Par exemple, en appliquant ce calcul pour $n=64$ (soit une espérance $\lambda = 32$ et un seuil d'acceptation de $16$), l'erreur devient négligeable et le taux de réussite (vrais positifs) atteint $99,9\,\%$. 
 
-À l'inverse, l'algorithme doit être capable de rejeter le bruit statistique (les faux positifs). Considérons une fausse différentielle, définie dans la littérature comme une propriété dont la probabilité est au plus $p/10$. Étant donné que la probabilité d'obtenir un quatuor correct évolue de façon quadratique par rapport à la probabilité de la différentielle, l'espérance des collisions pour cette fausse piste s'effondre drastiquement :
+À l'inverse, l'algorithme doit être capable de rejeter le bruit statistique (les faux positifs). Considérons une fausse différentielle, définie par Dinur \textit{et al.} \cite{DDKRS23} comme une propriété dont la probabilité est au plus $p/10$. Étant donné que la probabilité d'obtenir un quadruplet correct évolue de façon quadratique par rapport à la probabilité de la différentielle, l'espérance des collisions pour cette fausse piste s'effondre drastiquement :
 \begin{equation*}
     \lambda_{false} = \frac{n}{2} \cdot \left(\frac{p/10}{p}\right)^2 = \frac{n}{2} \cdot \frac{1}{100} = \frac{n}{200}
 \end{equation*}
 
-La probabilité qu'une telle anomalie statistique franchisse le filtre de détection est $P(Y \ge n/4)$, où $Y \sim \mathcal{P}(n/200)$. Atteindre le seuil de $n/4$ signifierait observer $50$ fois l'espérance théorique ($n/200$). En évaluant la probabilité cumulée sur cette loi de Poisson pour un écart aussi extrême vers le haut, on démontre que le risque est strictement inférieur à $2^{-n}$. Ainsi, la probabilité qu'une fausse piste soit validée par hasard est si infime qu'elle devient virtuellement impossible, garantissant la pureté des candidats transmis à la phase de vérification.
+La probabilité qu'une telle anomalie statistique franchisse le filtre de détection correspond à $P(Y \ge n/4)$, où $Y \sim \mathcal{P}(n/200)$. Atteindre le seuil de $n/4$ signifierait observer $50$ fois l'espérance théorique ($n/200$). En évaluant la probabilité cumulée sur cette loi de Poisson pour une telle déviation, on démontre que le risque est majoré par $2^{-n}$. Ainsi, la probabilité qu'une fausse piste soit validée par hasard s'avère négligeable, ce qui garantit un taux extrêmement faible de faux positifs parmi les candidats transmis à la phase de vérification.
 
 Cette mécanique statistique mathématique est illustrée visuellement par la Figure~\ref{fig:poisson_signal_noise}. On y observe la séparation nette entre les deux distributions, validant la pertinence du seuil choisi pour isoler le signal du bruit statistique.
 
@@ -398,7 +428,7 @@ Si le candidat est bel et bien une vraie différentielle de probabilité $p$, ch
 
 L'algorithme valide définitivement la différentielle si le compteur de succès dépasse strictement le seuil de $n/2$. En plaçant à nouveau ce seuil d'acceptation à la moitié de l'espérance théorique, la logique mathématique reste identique à celle de la détection : la probabilité qu'une vraie différentielle échoue à ce stade (c'est-à-dire $P(Z \le n/2)$) est négligeable et s'effondre avec la croissance de $n$.
 
-À l'inverse, l'algorithme doit bloquer les fausses différentielles (de probabilité $p/10$ ou moins) qui auraient pu franchir la première étape par pure malchance statistique. Pour un tel candidat, l'espérance lors de cette phase de vérification s'écroule :
+À l'inverse, l'algorithme doit éviter les fausses différentielles (de probabilité $p/10$ ou moins) qui auraient pu franchir la première étape par pure malchance statistique. Pour un tel candidat, l'espérance lors de cette phase de vérification s'écroule :
 \begin{equation*}
     \lambda_{false\_verify} = N_{verify} \times \frac{p}{10} = \left(\frac{n}{p}\right) \times \frac{p}{10} = \frac{n}{10}
 \end{equation*}
@@ -409,26 +439,18 @@ Pour qu'un tel faux positif soit validé, il faudrait qu'il produise plus de $n/
 
 Le pseudo-code détaillé de cet algorithme fondamental est fourni à la page 9 de l'article. Nous l'avons intégralement implémenté dans notre programme sous la fonction \texttt{run\allowbreak Fundamental\allowbreak Algorithm}, dont le code source C++ est librement accessible sur notre dépôt GitHub public, au sein du fichier \url{src/analysis/DifferentialSearch.cpp}.
 
-Grâce à cette approche exploitant la différentielle de substitut, la complexité temporelle de la recherche est drastiquement abaissée à $\mathcal{O}(n \cdot 2^{n/2} \cdot p^{-1})$. Tout au long du développement, nous avons dû faire des choix architecturaux pour maximiser la vitesse d'exécution de cette implémentation. L'une de nos optimisations principales concerne le stockage et l'indexation des candidats différentiels $(\alpha, \beta)$. Dans les algorithmes de recherche de collisions, le programme doit constamment stocker, chercher et compter les occurrences des couples d'entrée-sortie. Représenter ces informations sous forme de paires d'objets distincts exigerait des fonctions de hachage complexes, ce qui introduirait une surcharge de calcul non négligeable à l'échelle de millions d'accès mémoire par seconde.
+Grâce à cette approche exploitant la différentielle de substitut, la complexité temporelle de la recherche est drastiquement abaissée à $\mathcal{O}(n \cdot 2^{n/2} \cdot p^{-1})$. Tout au long du développement, nous avons dû faire des choix pour maximiser la vitesse d'exécution de cette implémentation. L'une de nos optimisations principales concerne le stockage et l'indexation des candidats différentiels : nous avons choisi de représenter les paires $(\alpha, \beta)$ d'entiers de 32 bits sous la forme d'un unique entier de 64 bits défini par $(\alpha \ll 32) \oplus \beta$.
 
-Pour contourner ce problème et accélérer les traitements, nous avons opté pour une technique de concaténation binaire. Le principe consiste à fusionner la différence d'entrée $\alpha$ et la différence de sortie $\beta$ au sein d'un seul et unique entier non signé de 64 bits. Mathématiquement, cette fusion s'opère en décalant les bits de $\alpha$ vers la gauche pour les placer sur la moitié forte de l'entier, puis en appliquant une disjonction logique (\text{OU} binaire) avec $\beta$ sur la moitié faible :
-\begin{equation*}
-    \text{Clé globale (64 bits)} = (\alpha \ll 32) \lor \beta
-\end{equation*}
+Cependant, cette optimisation matérielle induit une limite structurelle stricte : puisque l'entier global fait 64 bits, il ne peut contenir que deux valeurs de 32 bits maximum. Ce choix de conception est un arbitrage que nous avons volontairement privilégié pour garantir des temps de calcul rapides, compatibles avec la durée du TER. Si cette limite technique nous empêche d'analyser directement des standards de 128 bits comme l'AES, elle nous a néanmoins permis de valider l'intégralité de nos chaînes de détection algorithmiques sur des variantes réduites de Speck en quelques minutes. Pour adapter notre programme à des chiffrements de grande taille ($n = 64$ ou $n = 128$ bits), il faudrait abandonner cette concaténation au profit d'entiers beaucoup plus larges (de 128 ou 256 bits) ou revenir à l'utilisation de paires structurelles.
 
-En utilisant cette clé numérique unique, le comptage des candidats devient extrêmement rapide. Un tel entier est en effet nativement et parfaitement pris en charge par les registres du processeur et par les algorithmes de hachage internes, garantissant des performances d'indexation optimales. Cependant, cette optimisation matérielle induit une limite structurelle stricte : puisque l'entier global fait 64 bits, il ne peut contenir que deux valeurs de 32 bits maximum. Ce choix de conception est un arbitrage que nous avons volontairement privilégié pour garantir des temps de calcul rapides, compatibles avec la durée du TER. Si cette limite technique nous empêche d'analyser directement des standards de 128 bits comme l'AES, elle nous a néanmoins permis de valider l'intégralité de nos chaînes de détection algorithmiques sur des variantes réduites de Speck en quelques minutes. Pour adapter notre programme à des chiffrements de grande taille ($n = 64$ ou $n = 128$ bits), il faudrait abandonner cette concaténation au profit d'entiers beaucoup plus larges (de 128 ou 256 bits) ou revenir à l'utilisation de paires structurelles.
-
-Toutefois, même avec cette optimisation d'adressage, la version fondamentale se heurte à une contrainte matérielle majeure : l'empreinte mémoire. Le maintien en mémoire d'une table de hachage globale pour stocker les $M$ évaluations devient extrêmement prohibitif à mesure que la taille du bloc $n$ augmente ou que le seuil de probabilité $p$ diminue.
+Toutefois, même avec cette optimisation de stockage, la version fondamentale se heurte à une contrainte matérielle majeure : l'empreinte mémoire. Le maintien en mémoire d'une table de hachage globale pour stocker les $M$ évaluations devient extrêmement prohibitif à mesure que la taille du bloc $n$ augmente ou que le seuil de probabilité $p$ diminue.
 
 Pour illustrer théoriquement ce « mur de la RAM », calculons l'espace mémoire brut requis pour analyser un chiffrement aux paramètres pourtant modestes, tel que Speck 32/64 ($n=32$), avec un seuil de probabilité $p=2^{-13}$. Le nombre de messages $M$ à évaluer et à stocker en phase de détection s'élève à :
 \begin{equation*}
-    M = \sqrt{n} \cdot 2^{n/2} \cdot p^{-1} = \sqrt{32} \cdot 2^{16} \cdot (2^{-13})^{-1} = \sqrt{32} \cdot 2^{29} \approx 3 \times 10^9 \text{ messages}
+    M = \sqrt{n} \cdot 2^{n/2} \cdot p^{-1} = \sqrt{32} \cdot 2^{16} \cdot (2^{-13})^{-1} = \sqrt{32} \cdot 2^{29} = 2^{31,5} \text{ messages}
 \end{equation*}
 
-Sur le plan purement théorique, stocker chaque évaluation nécessite a minima de conserver le message d'entrée $x$ et son résultat $g_{\gamma}(x)$ pour pouvoir identifier les collisions et en déduire $\alpha$. Pour un bloc de 32 bits, cela représente 64 bits de données (soit 8 octets) par message. L'allocation de mémoire théorique brute, sans même compter le poids de la structure de données sous-jacente, s'élève donc à :
-\begin{equation*}
-    \text{Mémoire théorique} \approx 3 \times 10^9 \text{ messages} \times 8 \text{ octets/message} \approx 24 \times 10^9 \text{ octets} \approx \textbf{24 Go}
-\end{equation*}
+Sur le plan purement théorique, stocker chaque évaluation nécessite a minima de conserver le message d'entrée $x$ et son résultat $g_{\gamma}(x)$ pour pouvoir identifier les collisions et en déduire $\alpha$. Pour un bloc de 32 bits, cela représente 64 bits de données (soit 8 octets) par message. L'allocation de mémoire théorique brute, sans même compter le poids de la structure de données sous-jacente, s'élève donc à environ : $2^{31,5} \cdot 2^{3} = 2^{34,5}$ octets, soit environ 24 Go.
 
 Ainsi, même pour analyser un chiffrement « jouet » de 32 bits, l'algorithme exige théoriquement un minimum absolu de 24 Go de mémoire vive. À titre de comparaison, passer à un bloc standard de 64 bits avec la même probabilité ferait exploser ce besoin brut à plusieurs centaines de Téraoctets.
 
@@ -436,7 +458,7 @@ Pour visualiser concrètement cette impasse matérielle, nous avons modélisé l
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.9\textwidth]{figures/ram_wall.png} % Assure-toi du nom du fichier
+    \includegraphics[width=0.9\textwidth]{figures/ram_wall.png}
     \caption{L'explosion combinatoire de la mémoire : le « mur de la RAM ». Dès $n=32$, l'algorithme fondamental pur dépasse les capacités d'un ordinateur personnel standard. Pour $n=64$, il outrepasse les capacités des plus grands supercalculateurs mondiaux.}
     \label{fig:ram_wall}
 \end{figure}
@@ -447,11 +469,11 @@ Cette limitation physique absolue justifie la nécessité de recourir à des var
 
 \section{L'algorithme sans mémoire (\textit{memoryless}) : le prix du temps}
 
-Pour pallier le problème rédhibitoire de l'empreinte spatiale de l'algorithme fondamental, les auteurs présentent à la page 13 de leur article une variante dite « sans mémoire » (\textit{memoryless}). Cette approche permet de ramener la consommation de mémoire vive à une constante $\mathcal{O}(1)$, éliminant de facto le « mur de la RAM ».
+Pour pallier le problème rédhibitoire de l'empreinte spatiale de l'algorithme fondamental, les auteurs présentent à la page 13 de leur article une variante dite « sans mémoire » (\textit{memoryless}). Cette approche permet de ramener la consommation de mémoire vive à une constante $\mathcal{O}(1)$.
 
-Pour réussir cette optimisation, l'algorithme abandonne complètement la génération d'un large échantillon stocké dans une table de hachage. À la place, il utilise l'algorithme de détection de cycles de Pollard pour trouver des collisions dans la fonction $g_{\gamma}$ à la volée, une par une. Chaque fois qu'une collision est détectée, la différence $(\alpha, \beta)$ correspondante est immédiatement extraite et soumise à la phase de vérification exhaustive. L'algorithme ne stocke aucun historique.
+Cette variante abandonne complètement la génération d'un large échantillon stocké dans une table de hachage. À la place, elle utilise l'algorithme de détection de cycles de Pollard pour trouver des collisions dans la fonction $g_{\gamma}$ à la volée, une par une. Chaque fois qu'une collision est détectée, la différence $(\alpha, \beta)$ correspondante est immédiatement extraite et soumise à la phase de vérification exhaustive. L'algorithme ne stocke aucun historique.
 
-Cependant, cette économie spatiale drastique se traduit par une pénalité significative sur le plan des performances. Puisque l'algorithme perd la vision globale offerte par le paradoxe des anniversaires sur un grand tableau, il doit évaluer de très nombreuses collisions inutiles avant de tomber sur un quatuor correct. Plus précisément, il faut extraire en moyenne $\mathcal{O}(p^{-2})$ collisions de la fonction $g_{\gamma}$ pour obtenir une correspondance valide. La recherche d'une collision par la méthode de Pollard coûtant $\mathcal{O}(2^{n/2})$, la complexité temporelle globale grimpe à :
+Cependant, cette économie de mémoire se traduit par une pénalité significative sur la complexité en temps. Puisque l'algorithme perd la vision globale offerte par le paradoxe des anniversaires sur un grand tableau, il doit évaluer de très nombreuses collisions inutiles avant de tomber sur un quadruplet correct. Plus précisément, il faut extraire en moyenne $\mathcal{O}(p^{-2})$ collisions de la fonction $g_{\gamma}$ pour obtenir une correspondance valide. La recherche d'une collision par la méthode de Pollard coûtant $\mathcal{O}(2^{n/2})$, la complexité temporelle globale grimpe à :
 \begin{equation*}
     \text{Temps}_{\text{memoryless}} = \mathcal{O}(2^{n/2}) \times \mathcal{O}(p^{-2}) = \mathcal{O}(2^{n/2}p^{-2})
 \end{equation*}
@@ -472,7 +494,7 @@ Concrètement, cela signifie qu'une recherche qui prendrait \textbf{1 minute} av
     8192 \text{ minutes} = \frac{8192}{60} \text{ heures} \approx 136,5 \text{ heures} \approx \textbf{5,68 jours}
 \end{equation*}
 
-Et plus la probabilité $p$ recherchée est faible, plus le temps d'exécution augmente. Bien que hautement parallélisable, cette méthode s'avère donc beaucoup trop lente pour être exploitée efficacement sur des machines standards, qui disposent pourtant de plusieurs gigaoctets de RAM laissés inutilisés par cette approche. C'est précisément pour combler ce vide entre le « tout mémoire » (incalculable) et le « sans mémoire » (interminable) que la solution du compromis a été développée.
+De plus, plus la probabilité $p$ recherchée est faible, plus le temps d'exécution augmente. Bien que hautement parallélisable, cette méthode s'avère donc beaucoup trop lente pour être exploitée efficacement sur des machines standards, qui disposent pourtant de plusieurs gigaoctets de RAM laissés inutilisés par cette approche. C'est précisément pour combler ce vide entre le « tout mémoire » (incalculable) et le « sans mémoire » (interminable) que la solution du compromis a été développée.
 
 \section{L'algorithme de compromis temps/mémoire (tradeoff)}
 
@@ -493,7 +515,7 @@ Pour un substitut $\gamma$ donné (appelé « saveur » ou \textit{flavor}), l'a
 
 La question centrale devient alors de déterminer combien de lots successifs doivent être générés pour détecter les différentielles à haute probabilité ciblées. Pour y répondre, il faut d'abord analyser les probabilités au sein d'un seul lot et évaluer ses chances de succès.
 
-Tout d'abord, nous savons qu'une vraie différentielle produit un « quatuor correct » (une collision utile) avec une probabilité de $p^2$. Dans un lot contenant $S$ collisions quelconques, l'espérance de trouver une collision liée à l'une de ces différentielles réelles est donc de $S \cdot p^2$. Cependant, pour éviter les faux positifs, l'algorithme ne se contente pas d'une seule bonne collision. Il exige d'en trouver deux au sein du même lot, qui suggèrent exactement la même différence d'entrée-sortie $(\alpha, \beta)$. En probabilités, lorsque l'espérance d'un événement rare est $\lambda = S \cdot p^2$, la probabilité que cet événement se produise au moins deux fois est proportionnelle à $\lambda^2$. La probabilité de succès pour un lot entier est donc d'environ :
+Tout d'abord, nous savons qu'une vraie différentielle produit un « quadruplet correct » (une collision utile) avec une probabilité de $p^2$. Dans un lot contenant $S$ collisions quelconques, l'espérance de trouver une collision liée à l'une de ces différentielles réelles est donc de $S \cdot p^2$. Cependant, pour éviter les faux positifs, l'algorithme ne se contente pas d'une seule bonne collision. Il exige d'en trouver deux au sein du même lot, qui suggèrent exactement la même différence d'entrée-sortie $(\alpha, \beta)$. En probabilités, lorsque l'espérance d'un événement rare est $\lambda = S \cdot p^2$, la probabilité que cet événement se produise au moins deux fois est proportionnelle à $\lambda^2$. La probabilité de succès pour un lot entier est donc d'environ :
 \begin{equation*}
     P(\text{succès d'un lot}) \approx (S \cdot p^2)^2 = S^2 \cdot p^4
 \end{equation*}
@@ -546,13 +568,13 @@ Les résultats empiriques confirment parfaitement le modèle mathématique théo
 
 Grâce à cet algorithme de compromis, la détection de différentielles à haute probabilité devient réalisable sur du matériel standard, franchissant définitivement la barrière de la recherche exhaustive en $2^n$. 
 
-Cependant, il est crucial de noter qu'aussi bien l'algorithme fondamental que ses variantes (sans mémoire ou de compromis) reposent sur une hypothèse fondatrice : le comportement pseudo-aléatoire de la fonction substitut $g_{\gamma}$. En effet, l'évaluation des probabilités, le nombre de quatuors attendus et la répartition des collisions supposent que la primitive analysée ne présente pas de structures internes venant fausser ces statistiques.
+Cependant, il est crucial de noter qu'aussi bien l'algorithme fondamental que ses variantes (sans mémoire ou de compromis) reposent sur une hypothèse fondatrice : le comportement pseudo-aléatoire de la fonction substitut $g_{\gamma}$. En effet, l'évaluation des probabilités, le nombre de quadruplets attendus et la répartition des collisions supposent que la primitive analysée ne présente pas de structures internes venant fausser ces statistiques.
 
 Si le chiffrement étudié possède des propriétés algébriques particulières qui empêchent $g_{\gamma}$ de se comporter comme une fonction aléatoire, les garanties mathématiques de détection s'effondrent. Cette dépendance aux hypothèses justifie la nécessité de concevoir un dernier filet de sécurité : un algorithme « pire cas » (\textit{Worst-Case Algorithm}). Bien que plus lourd, ce dernier doit être capable de retrouver ces propriétés statistiques sans formuler la moindre hypothèse sur le comportement structurel de la primitive étudiée.
 
 \section{L'algorithme « pire cas » (\textit{worst-case}) : s'affranchir des heuristiques}
 
-Comme évoqué précédemment, les algorithmes fondamental et de compromis reposent sur un pari fort : l'hypothèse que les quatuors corrects se distribuent de manière aléatoire au sein de l'espace des messages. Cependant, si un concepteur malveillant introduit une porte dérobée (\textit{trapdoor}) dans le chiffrement, par exemple, en forçant les paires correctes à se concentrer dans un sous-espace linéaire restreint, l'algorithme fondamental échouera presque systématiquement, car il n'aura testé qu'un ou très peu de substituts $\gamma$. 
+Comme évoqué précédemment, les algorithmes fondamental et de compromis reposent sur un pari fort : l'hypothèse que les quadruplets corrects se distribuent de manière aléatoire au sein de l'espace des messages. Cependant, si un concepteur malveillant introduit une porte dérobée (\textit{trapdoor}) dans le chiffrement, par exemple, en forçant les paires correctes à se concentrer dans un sous-espace linéaire restreint, l'algorithme fondamental échouera presque systématiquement, car il n'aura testé qu'un ou très peu de substituts $\gamma$. 
 
 Pour contrer cette menace et garantir une détection infaillible même face à une primitive conçue de manière adverse, les auteurs de l'article introduisent un algorithme dit « pire cas » Son principe est de ne plus s'en remettre à la chance sur le choix du substitut, mais de forcer statistiquement la découverte en multipliant les angles d'attaque de manière indépendante.
 
@@ -561,9 +583,9 @@ Pour contrer cette menace et garantir une détection infaillible même face à u
 Au lieu d'utiliser un échantillon géant avec un seul substitut $\gamma$ (ou de chercher jusqu'à trouver un succès comme dans le tradeoff), l'algorithme \textit{Worst-Case} va tirer un nombre prédéfini et massif de substituts $\gamma$ différents, et générer un sous-échantillon pour chacun d'eux. La mécanique repose sur trois paramètres mathématiques interconnectés, rigoureusement calibrés pour isoler le signal du bruit sans formuler d'hypothèses sur la distribution.
 
 \paragraph{1. La taille du sous-échantillon $M$ :}
-La première différence majeure avec l'algorithme fondamental réside dans le dimensionnement de $M$. L'algorithme fondamental cherchait à accumuler suffisamment de collisions globales en une seule fois, exigeant un $M$ colossal. Ici, l'objectif d'un seul lot est beaucoup plus modeste : pour un substitut $\gamma$ donné, le lot doit être juste assez grand pour garantir la présence d'\textbf{au moins un} quatuor correct (ce qui constituera un « vote » pour ce $\gamma$).
+La première différence majeure avec l'algorithme fondamental réside dans le dimensionnement de $M$. L'algorithme fondamental cherchait à accumuler suffisamment de collisions globales en une seule fois, exigeant un $M$ colossal. Ici, l'objectif d'un seul lot est beaucoup plus modeste : pour un substitut $\gamma$ donné, le lot doit être juste assez grand pour garantir la présence d'\textbf{au moins un} quadruplet correct (ce qui constituera un « vote » pour ce $\gamma$).
 
-Pour garantir une forte probabilité de succès (fixée par les auteurs à $80\,\%$, soit $4/5$), ces derniers s'appuient sur la méthode probabiliste du second moment dans la démonstration de leur Lemme 1. Cette méthode indique que pour atteindre le seuil de $4/5$, l'espérance mathématique du nombre de quatuors corrects doit être d'au moins $8$. Sachant que cette espérance se calcule par $E = \frac{M^2}{2} \cdot 2^{-n} \cdot p$, on peut en déduire la taille optimale du lot :
+Pour garantir une forte probabilité de succès (fixée par les auteurs à $80\,\%$, soit $4/5$), ces derniers s'appuient sur la méthode probabiliste du second moment dans la démonstration de leur Lemme 1. Cette méthode indique que pour atteindre le seuil de $4/5$, l'espérance mathématique du nombre de quadruplets corrects doit être d'au moins $8$. Sachant que cette espérance se calcule par $E = \frac{M^2}{2} \cdot 2^{-n} \cdot p$, on peut en déduire la taille optimale du lot :
 \begin{equation*}
     \frac{M^2}{2} \cdot 2^{-n} \cdot p = 8 \implies M^2 = 16 \cdot 2^n \cdot p^{-1} \implies M = 4 \cdot 2^{n/2} \cdot p^{-1/2}
 \end{equation*}
@@ -575,7 +597,7 @@ C'est pourquoi $M$ évolue ici en $p^{-1/2}$ et non plus en $p^{-1}$, rendant ch
 Ce seuil est obtenu en calculant l'espérance des votes d'un vrai signal par rapport à un bruit statistique :
 \begin{itemize}
     \item \textbf{Pour une vraie différentielle (probabilité $\ge p$) :} Comme établi par la taille de $M$, le lot a déjà une probabilité de $4/5$ de contenir une bonne paire initiale. La question est de savoir si la paire translatée par le substitut aléatoire $\gamma$ sera elle aussi correcte. Dans un scénario idéal, cette probabilité conditionnelle serait de $p$. Toutefois, pour garantir que l'algorithme fonctionne même dans le pire des cas (où un adversaire aurait biaisé la distribution), les auteurs démontrent mathématiquement que cette probabilité ne peut jamais descendre sous la borne stricte de $p/2$. La probabilité minimale qu'un lot génère un vote est donc le produit de ces deux étapes : $(4/5) \times (p/2) = 2p/5 = 0,40 \cdot p$. Sur $S$ itérations, on s'attend à récolter en moyenne $\mathbf{0,40 \cdot S \cdot p}$ votes.
-    \item \textbf{Pour une fausse différentielle (probabilité $\le p/10$) :} Ici, aucune paire n'est garantie par la taille du lot. La probabilité qu'une fausse piste forme un quatuor par pur hasard nécessite de valider les deux paires consécutivement, ce qui force à élever sa probabilité au carré. L'évaluation de l'espérance (qui dépend de $M^2$, introduisant ainsi un facteur $16$ puisque $M$ commence par $4$) donne un plafond de $16 \cdot p \cdot (1/10)^2 = 0,16 \cdot p$. L'espérance maximale des votes pour un bruit est donc de $\mathbf{0,16 \cdot S \cdot p}$.
+    \item \textbf{Pour une fausse différentielle (probabilité $\le p/10$) :} Ici, aucune paire n'est garantie par la taille du lot. La probabilité qu'une fausse piste forme un quadruplet par pur hasard nécessite de valider les deux paires consécutivement, ce qui force à élever sa probabilité au carré. L'évaluation de l'espérance (qui dépend de $M^2$, introduisant ainsi un facteur $16$ puisque $M$ commence par $4$) donne un plafond de $16 \cdot p \cdot (1/10)^2 = 0,16 \cdot p$. L'espérance maximale des votes pour un bruit est donc de $\mathbf{0,16 \cdot S \cdot p}$.
 \end{itemize}
 Pour séparer le signal du bruit, le seuil d'acceptation est fixé exactement à la moyenne arithmétique entre ces deux espérances ($0,16$ et $0,40$) :
 \begin{equation*}
