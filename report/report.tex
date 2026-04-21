@@ -311,16 +311,16 @@ La nouvelle approche du papier consiste à choisir une différence $\gamma$ arbi
     g_{\gamma}(x) = F(x) \oplus F(x \oplus \gamma)
 \end{equation*}
 
-Pour appréhender ce gain de complexité, il convient de formaliser la distinction mathématique entre les deux approches :
+Pour appréhender ce mécanisme, il convient d'analyser la différence fondamentale entre les deux approches :
 
 \begin{itemize}
     \item \textbf{L'approche standard (Recherche itérative) :} 
-    La différence d'entrée $\alpha$ est fixée \textit{a priori}. L'algorithme cherche des paires satisfaisant :
+    La différence d'entrée $\alpha$ est fixée. L'algorithme cherche des paires satisfaisant :
     $$F(x) \oplus F(x \oplus \alpha) = \beta$$
     Cette condition impose de boucler séquentiellement sur l'intégralité de l'espace des différences d'entrée, soit $\forall \alpha \in \{0, 1\}^n \setminus \{0\}$, entraînant une complexité en $\mathcal{O}(2^n)$.
 
     \item \textbf{La différentielle de substitut (Recherche de collisions) :} 
-    L'algorithme utilise $g_{\gamma}(x) = F(x) \oplus F(x \oplus \gamma)$ comme signature. Au lieu de fixer $\alpha$, on cherche simplement une collision entre deux messages $x$ et $x'$ :
+    L'algorithme utilise $g_{\gamma}(x)$ comme signature. Au lieu de fixer $\alpha$, on cherche simplement une collision entre deux messages $x$ et $x'$ :
     $$g_{\gamma}(x) = g_{\gamma}(x')$$
     En développant cette égalité, on obtient :
     $$F(x) \oplus F(x \oplus \gamma) = F(x') \oplus F(x' \oplus \gamma)$$
@@ -410,10 +410,14 @@ La probabilité qu'une telle anomalie statistique franchisse le filtre de détec
 
 Cette mécanique statistique mathématique est illustrée visuellement par la Figure~\ref{fig:poisson_signal_noise}. On y observe la séparation nette entre les deux distributions, validant la pertinence du seuil choisi pour isoler le signal du bruit statistique.
 
+Pour illustrer visuellement l'efficacité de ce filtrage, nous avons modélisé ces deux distributions à l'aide de la bibliothèque scientifique \texttt{SciPy} (Python). Plutôt que de recourir à une simulation empirique coûteuse, nous avons tracé analytiquement la fonction de masse de probabilité exacte pour une primitive de $n=64$ bits. 
+
+La Figure~\ref{fig:poisson_signal_noise} superpose ainsi la distribution du signal attendu ($\lambda = 32$) et celle d'une fausse piste très probable ($\lambda = 0,32$). On y observe une séparation totale entre les deux courbes de probabilité, validant factuellement que le choix du seuil théorique à $n/4$ isole parfaitement le signal légitime tout en rejetant le bruit statistique.
+
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.8\textwidth]{figures/poisson_signal_bruit.png}
-    \caption{Visualisation statistique de la séparation signal-bruit via le seuil $n/4$ (modélisation pour $n=64$). La distribution légitime (droite) est parfaitement distincte du bruit (gauche), justifiant l'efficacité du filtrage mathématique.}
+    \caption{Tracé analytique des distributions de Poisson pour le signal et le bruit (modélisation mathématique pour $n=64$). Le graphique confirme qu'une fausse piste n'a quasiment aucune chance statistique de franchir la zone de rejet pour atteindre le seuil d'acceptation de 16 collisions.}
     \label{fig:poisson_signal_noise}
 \end{figure}
 
