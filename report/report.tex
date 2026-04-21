@@ -498,7 +498,7 @@ De plus, plus la probabilité $p$ recherchée est faible, plus le temps d'exécu
 
 \section{L'algorithme de compromis temps/mémoire (tradeoff)}
 
-Comme nous venons de le voir, l'approche fondamentale sature la mémoire vive, tandis que l'approche sans mémoire s'avère rédhibitoirement lente. Pour surmonter ce dilemme, les auteurs proposent en annexe de leur article d'exploiter la mémoire disponible (notée $S$) de façon stratégique pour concevoir des algorithmes de compromis (\textit{Tradeoffs}). Ils décrivent plus précisément deux variantes distinctes, adaptées à différentes capacités matérielles :
+Pour surmonter ce dilemme, les auteurs proposent en annexe de leur article d'exploiter la mémoire disponible (notée $S$) de façon stratégique pour concevoir des algorithmes de compromis (\textit{Tradeoffs}). Ils décrivent plus précisément deux variantes distinctes, adaptées à différentes capacités matérielles :
 
 \begin{itemize}
     \item \textbf{Le Premier Compromis (Faible mémoire) :} Il s'agit d'une extension de l'algorithme dit « sans mémoire ». Conçu pour des environnements où l'espace $S$ est extrêmement restreint, il trouve un petit nombre de collisions et les teste toutes de manière systématique. Cette phase de vérification exhaustive alourdit considérablement la complexité temporelle (ajoutant un terme en $\tilde{\mathcal{O}}(p^{-3})$), le rendant sous-optimal sur des machines classiques.
@@ -507,24 +507,24 @@ Comme nous venons de le voir, l'approche fondamentale sature la mémoire vive, t
 
 Dans le cadre de ce projet, les ordinateurs modernes standards disposant généralement d'une quantité de mémoire vive confortable (de 8 à 16 Go de RAM), nous ne sommes pas dans un scénario de mémoire critique absolue. Nous nous sommes donc naturellement penchés sur le \textbf{Second Algorithme de Compromis} (\textit{Tradeoff algorithm 2}). Cette approche permet de conserver la vitesse d'exécution optimale en $\tilde{\mathcal{O}}(2^{n/2} p^{-1})$ tout en plafonnant intelligemment l'utilisation de la mémoire à un espace fixe dimensionné à $\tilde{\mathcal{O}}(p^{-2})$.
 
-\subsection{Principe théorique : échantillonnage par lots (\textit{batching})}
+\subsection{Principe théorique : l'approche probabiliste par lots (batching)}
 
-Au lieu de générer et de stocker d'un seul coup un immense échantillon, l'algorithme procède par lots (\textit{batches}). Il alloue un espace mémoire fixe $S$, qui correspond directement au nombre de collisions que l'on s'autorise à conserver simultanément. Pour générer ces lots, l'algorithme exécute une boucle interne s'appuyant sur la recherche de collisions parallèles (\textit{Parallel Collision Search} ou PCS). Cette technique permet de trouver des collisions dans une fonction pseudo-aléatoire sans avoir à mémoriser toutes ses évaluations, réduisant ainsi drastiquement l'empreinte spatiale.
+Pour concevoir ce second compromis, les auteurs de l'article s'appuient sur l'algorithme de recherche de collisions parallèles (PCS), introduit par van Oorschot et Wiener en 1999 \cite{OW99}. L'étude détaillée de la mécanique interne de cet algorithme dépasse le cadre de notre implémentation ; nous renvoyons le lecteur à l'article original pour une description exhaustive. 
 
-Pour un substitut $\gamma$ donné (appelé « saveur » ou \textit{flavor}), l'algorithme extrait donc un lot contenant exactement $S$ collisions de la fonction $g_{\gamma}$. Grâce aux propriétés de la méthode PCS, l'extraction de ces $S$ collisions s'effectue en un temps proportionnel à $2^{n/2} \cdot S^{1/2}$. 
+D'un point de vue fonctionnel, il suffit de retenir que la méthode PCS permet d'extraire un lot de $S$ collisions de la fonction $g_{\gamma}$ tout en maintenant une empreinte spatiale strictement bornée à $\mathcal{O}(S)$. Le temps d'exécution requis pour générer ce lot unique s'élève à $\mathcal{O}(2^{n/2} \cdot S^{1/2})$.
 
-La question centrale devient alors de déterminer combien de lots successifs doivent être générés pour détecter les différentielles à haute probabilité ciblées. Pour y répondre, il faut d'abord analyser les probabilités au sein d'un seul lot et évaluer ses chances de succès.
+La question centrale devient alors de déterminer combien de lots successifs de taille $S$ doivent être générés pour détecter les différentielles à haute probabilité ciblées. Pour y répondre, il faut analyser les probabilités au sein d'un seul lot et évaluer ses chances de succès.
 
-Tout d'abord, nous savons qu'une vraie différentielle produit un « quadruplet correct » (une collision utile) avec une probabilité de $p^2$. Dans un lot contenant $S$ collisions quelconques, l'espérance de trouver une collision liée à l'une de ces différentielles réelles est donc de $S \cdot p^2$. Cependant, pour éviter les faux positifs, l'algorithme ne se contente pas d'une seule bonne collision. Il exige d'en trouver deux au sein du même lot, qui suggèrent exactement la même différence d'entrée-sortie $(\alpha, \beta)$. En probabilités, lorsque l'espérance d'un événement rare est $\lambda = S \cdot p^2$, la probabilité que cet événement se produise au moins deux fois est proportionnelle à $\lambda^2$. La probabilité de succès pour un lot entier est donc d'environ :
+Une vraie différentielle produit un « quadruplet correct » (une collision utile) avec une probabilité de $p^2$. Dans un lot contenant $S$ collisions quelconques, l'espérance de trouver une collision liée à l'une de ces différentielles réelles est donc de $S \cdot p^2$. Cependant, pour éviter les faux positifs, l'algorithme exige de trouver au moins deux collisions au sein du même lot suggérant exactement la même différence d'entrée-sortie $(\alpha, \beta)$. En probabilités, lorsque l'espérance d'un événement rare est $\lambda = S \cdot p^2$, la probabilité que cet événement se produise au moins deux fois est proportionnelle à $\lambda^2$. La probabilité de succès pour un lot entier est donc d'environ :
 \begin{equation*}
     P(\text{succès d'un lot}) \approx (S \cdot p^2)^2 = S^2 \cdot p^4
 \end{equation*}
 
-Puisque la probabilité d'obtenir ce résultat avec un seul lot est de $S^2 \cdot p^4$, il faudra, en moyenne, répéter le tirage un nombre de fois équivalent à l'inverse de cette probabilité pour obtenir un succès. Le nombre de lots nécessaires est donc de $S^{-2} \cdot p^{-4}$.
+Puisque la probabilité d'obtenir ce résultat avec un seul lot est de $S^2 \cdot p^4$, il faudra, en moyenne, répéter la recherche avec de nouvelles saveurs $\gamma$ un nombre de fois équivalent à l'inverse de cette probabilité. Le nombre de lots nécessaires est donc de $S^{-2} \cdot p^{-4}$.
 
-La complexité temporelle globale s'obtient logiquement en multipliant le temps passé à générer un seul lot par le nombre de lots nécessaires :
+La complexité temporelle globale théorique s'obtient en multipliant le temps passé à générer un lot par le nombre de lots itérés :
 \begin{equation*}
-    \text{Temps total} = \underbrace{\tilde{\mathcal{O}}(2^{n/2}S^{1/2})}_{\text{Temps pour } 1 \text{ lot}} \times \underbrace{S^{-2}p^{-4}}_{\text{Nombre de lots}} = \tilde{\mathcal{O}}(2^{n/2}p^{-4}S^{-3/2})
+    \text{Temps total} = \underbrace{\tilde{\mathcal{O}}(2^{n/2}S^{1/2})}_{\text{Temps pour 1 lot}} \times \underbrace{S^{-2}p^{-4}}_{\text{Nombre de lots}} = \tilde{\mathcal{O}}(2^{n/2}p^{-4}S^{-3/2})
 \end{equation*}
 
 L'intérêt de cette formule apparaît lorsque l'on fixe la limite de mémoire allouée à $S = \tilde{\mathcal{O}}(p^{-2})$. En injectant cette valeur dans l'équation de la complexité temporelle, les exposants s'annulent :
@@ -532,39 +532,39 @@ L'intérêt de cette formule apparaît lorsque l'on fixe la limite de mémoire a
     \text{Temps total} = \tilde{\mathcal{O}}\left(2^{n/2} p^{-4} (p^{-2})^{-3/2}\right) = \tilde{\mathcal{O}}\left(2^{n/2} p^{-4} p^3\right) = \tilde{\mathcal{O}}(2^{n/2}p^{-1})
 \end{equation*}
 
-En fragmentant ainsi la recherche, l'algorithme retrouve exactement la même complexité temporelle que l'approche fondamentale, mais en ayant réduit la complexité spatiale d'un facteur important, passant de $2^{n/2}p^{-1}$ à seulement $p^{-2}$.
+Ainsi, l'algorithme théorique retrouve la complexité temporelle optimale de l'approche fondamentale en $\tilde{\mathcal{O}}(2^{n/2}p^{-1})$, tout en limitant l'empreinte spatiale à $\mathcal{O}(p^{-2})$.
 
-\subsection{De la théorie à la pratique : notre implémentation C++}
+\subsection{De la théorie à la pratique : implémentation par lots et accumulation globale}
 
-Traduire cette théorie mathématique en un programme concret nécessite quelques adaptations. Notre implémentation, librement disponible sur notre dépôt GitHub public au sein du fichier \url{src/analysis/DifferentialSearch.cpp} via la fonction \texttt{run\allowbreak Memory\allowbreak Efficient\allowbreak Algorithm}, gère cette contrainte de manière dynamique tout en maximisant les performances du processeur.
+Bien que l'algorithme PCS soit optimal d'un point de vue asymptotique, il a été originellement conçu pour des environnements où la contrainte mémoire est extrême. Son implémentation pratique s'avère complexe : elle exige un paramétrage dynamique des points distingués, une gestion précise des cycles infinis, et le recalcul des chaînes ajoute une complexité en temps non négligeable. 
+
+Dans le cadre de ce projet, nos machines de test disposaient d'une mémoire vive modérée (plusieurs gigaoctets). Il n'était donc ni nécessaire ni pertinent de s'imposer la rigueur spatiale absolue du PCS. Nous avons fait le choix assumé d'allouer une empreinte mémoire légèrement supérieure pour bénéficier d'une architecture beaucoup plus simple et rapide en C++ (fonction \texttt{run\allowbreak Memory\allowbreak Efficient\allowbreak Algorithm}). Plutôt que d'utiliser les chaînes de points distingués, nous avons implémenté une \textbf{recherche par lots restreints (batching) couplée à un tri en mémoire}.
 
 \paragraph{Le réglage empirique de la RAM ($M_{MAX}$) :}
-Le premier défi de notre implémentation fut de calibrer la limite stricte de RAM autorisée ($M_{MAX}$). Plutôt que de fixer une valeur théorique, nous avons procédé à des tests empiriques sur nos machines de développement. Nous avons constaté que si nous autorisions l'algorithme à consommer plus de 2,3 Go (soit environ 100 millions d'entrées), le système d'exploitation commençait à utiliser le \textit{swap} (la mémoire virtuelle sur le disque dur) pour compenser le manque de RAM disponible. Ce mécanisme de \textit{swapping} ralentissait l'exécution de manière si importante que le gain théorique de l'algorithme était totalement annulé. Nous avons donc codé l'algorithme pour qu'il plafonne dynamiquement la taille d'un lot à ce $M_{MAX}$ et qu'il compense cette restriction en multipliant mathématiquement le nombre de lots (effet $K^2$).
+Le premier défi fut de calibrer la limite stricte de RAM autorisée. Lors de nos tests, nous avons constaté qu'au-delà d'une allocation de 2,3 Go (soit environ 100 millions d'entrées), le système d'exploitation commençait à utiliser la mémoire virtuelle sur le disque dur (\textit{swap}). Ce mécanisme ralentissait l'exécution de manière si drastique que le gain théorique de l'algorithme était annulé. L'algorithme plafonne donc dynamiquement la taille d'un lot à cette valeur $M_{MAX}$.
 
-Puisque le nombre de paires formées (et donc de collisions potentielles) évolue de manière quadratique selon le paradoxe des anniversaires, diviser la taille du tableau par $K$ fait chuter le nombre de collisions générées par lot d'un facteur $K^2$. Pour compenser cette perte et conserver le même taux de détection global, le programme exécute exactement $K^2$ lots avec des substituts $\gamma$ aléatoires différents.
+\paragraph{L'évaluation et le tri des lots :}
+Pour un substitut $\gamma$ donné, le programme remplit le tableau alloué avec des évaluations aléatoires de $g_{\gamma}$. Au lieu d'utiliser une structure de hachage, le tableau est trié en place. Par conséquent, toutes les collisions se retrouvent mécaniquement adjacentes. Un unique parcours linéaire du tableau permet alors de les identifier et d'en extraire les candidats. Cette approche s'avère très économe en espace et extrêmement rapide, car le tri en mémoire contiguë maximise l'utilisation du cache du processeur.
 
-\paragraph{L'élimination de la table de hachage interne :}
-Pour accélérer le traitement d'un lot et économiser la surcharge mémoire liée aux métadonnées des tables de hachage dynamiques, le programme stocke temporairement les évaluations dans un simple tableau plat et contigu. Une fois le lot entièrement généré, ce tableau est trié en place selon la valeur de la fonction $g_{\gamma}(x)$. Par conséquent, toutes les collisions se retrouvent mécaniquement adjacentes en mémoire. Il suffit alors d'effectuer un unique parcours linéaire du tableau pour les identifier et extraire les candidats. Cette approche s'avère non seulement très économe en espace, mais également extrêmement rapide car elle maximise l'utilisation de la mémoire cache du processeur.
+\paragraph{La compensation mathématique (l'effet $K^2$) :}
+D'après le paradoxe des anniversaires, le nombre de paires formées évolue de manière quadratique. Diviser la taille du tableau idéal d'un facteur $K$ (pour respecter $M_{MAX}$) fait donc chuter le nombre de collisions générées par lot d'un facteur $K^2$. Pour compenser cette perte statistique et conserver le même taux de détection global, le programme tire une nouvelle saveur $\gamma$ aléatoire à chaque itération et exécute rigoureusement $K^2$ lots indépendants. Plus la mémoire allouée est faible, plus le temps d'exécution augmente quadratiquement.
 
 \paragraph{Le filtre de fréquence global :}
-Le dernier défi consiste à compter les apparitions d'un candidat $(\alpha, \beta)$ à travers les différents lots, sans recréer le goulot d'étranglement lié à une structure de hachage globale. Pour résoudre ce problème, nous avons opté pour un \textbf{filtre de fréquence} (\textit{Frequency Filter}) pré-alloué de taille fixe (par exemple 1 Go).
-Lorsqu'une collision suggère une clé $(\alpha, \beta)$, celle-ci est hachée et modulo-indexée dans ce grand tableau d'octets. Le compteur de la case correspondante est incrémenté. Ce n'est que si cette case franchit le seuil d'acceptation de l'algorithme fondamental ($n/4$) que la véritable clé $(\alpha, \beta)$ est allouée dans une liste restreinte. Cette liste finale, de très petite taille, est ensuite soumise à la phase de vérification classique.
+La fragmentation de la recherche impose de compter les apparitions d'un candidat $(\alpha, \beta)$ à travers les différents lots, sans recréer un goulot d'étranglement mémoire. Notre implémentation utilise un \textbf{filtre de fréquence} (\textit{Frequency Filter}) pré-alloué de taille fixe (1 Go). Lorsqu'une collision suggère une clé, celle-ci est hachée et indexée dans ce grand tableau d'octets pour incrémenter un compteur. Ce n'est que si cette case franchit le seuil d'acceptation fondamental ($n/4$) que la véritable clé est allouée dans une liste restreinte pour être soumise à la vérification finale.
 
-\paragraph{Validation expérimentale de l'effet $K^2$ :}
-Pour démontrer concrètement l'impact de ce compromis, nous avons mené une campagne de tests sur Speck 32/64 ($p=2^{-9}$), dont l'échantillon idéal nécessite $M \approx 190$ millions d'entrées (soit environ 5,6 Go de RAM). Nous avons artificiellement restreint la limite mémoire allouée à notre algorithme pour observer son comportement.
-
-La Figure~\ref{fig:tradeoff_curve} illustre l'évolution du temps de calcul total en fonction de la quantité de mémoire vive autorisée.
+\paragraph{Validation expérimentale :}
+Pour démontrer l'impact de ce compromis, nous avons mené une campagne de tests sur Speck 32/64 ($p=2^{-9}$), dont l'échantillon idéal nécessite environ 5,6 Go de RAM. Nous avons artificiellement restreint la limite mémoire allouée à notre algorithme pour observer son comportement (Figure~\ref{fig:tradeoff_curve}).
 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.85\textwidth]{figures/tradeoff_curve.png}
-    \caption{Courbe du compromis Temps-Mémoire sur Speck 32/64. La réduction de la RAM disponible contraint l'algorithme à multiplier les lots d'évaluation, entraînant une hausse quadratique du temps d'exécution due à l'effet $K^2$.}
+    \caption{Courbe du compromis Temps-Mémoire sur Speck 32/64. La réduction de la RAM disponible contraint l'algorithme à multiplier les lots d'évaluation, entraînant une hausse quadratique du temps d'exécution (effet $K^2$).}
     \label{fig:tradeoff_curve}
 \end{figure}
 
-Les résultats empiriques confirment parfaitement le modèle mathématique théorique. En réduisant l'empreinte mémoire d'un facteur 4,5 (passant de 5,6~Go à 1,25~Go), le temps d'exécution passe de 21~secondes à plus de 274~secondes. Le nombre de lots nécessaires explose quant à lui de 1 à 361. Cette analyse démontre que l'algorithme de compromis offre une flexibilité matérielle indispensable, permettant de faire aboutir des attaques complexes sur des machines aux ressources limitées au prix d'un allongement prévisible du temps de calcul.
+Les résultats empiriques confirment parfaitement le modèle mathématique. En réduisant l'empreinte mémoire d'un facteur 4,5 (passant de 5,6 Go à 1,25 Go), le temps d'exécution passe de 21 secondes à plus de 274 secondes, et le nombre de lots nécessaires augmente de 1 à 361. L'algorithme de compromis offre ainsi une adaptabilité matérielle au prix d'un allongement prévisible du calcul.
 
-\subsection{Ouverture : La dépendance aux hypothèses}
+\section{Ouverture : La dépendance aux hypothèses}
 
 Grâce à cet algorithme de compromis, la détection de différentielles à haute probabilité devient réalisable sur du matériel standard, franchissant définitivement la barrière de la recherche exhaustive en $2^n$. 
 
@@ -638,8 +638,9 @@ En effet, le ralentissement théorique d'un facteur $p^{-1/2}$ et la nécessité
 
 Une piste d'amélioration théorique (non implémentée dans nos travaux) consisterait à appliquer la méthode de recherche de collisions parallèles (PCS) au sein même de cet algorithme « pire cas », à l'instar de ce qui a été fait pour le compromis temps/mémoire. Cela permettrait d'éliminer le stockage direct des $M$ messages dans des tables de hachage et réduirait drastiquement l'empreinte spatiale. Néanmoins, bien que le problème de la RAM puisse être atténué par cette astuce, la barrière temporelle imposée par la complexité en $\tilde{\mathcal{O}}(2^{n/2} p^{-3/2})$ resterait un obstacle infranchissable pour analyser des chiffrements avec des tailles de blocs standards ($n \ge 64$).
 
-\section*{Synthèse comparative des algorithmes}
-\addcontentsline{toc}{section}{Synthèse comparative des algorithmes}
+\subsection{Bilan et synthèse comparative des algorithmes}
+
+Au terme de cette analyse détaillant la transition de la recherche exhaustive vers la recherche probabiliste, il convient de mettre en perspective l'ensemble des méthodes explorées. Le Tableau~\ref{tab:synthese_algos} dresse le bilan des six variantes algorithmiques abordées dans ce rapport. Il confronte leurs complexités en temps et en espace ainsi que leurs dépendances respectives aux hypothèses de la primitive étudiée.
 
 \begin{table}[H]
     \centering
@@ -649,29 +650,29 @@ Une piste d'amélioration théorique (non implémentée dans nos travaux) consis
     \renewcommand{\arraystretch}{1.4}
     \begin{tabular}{p{3cm}p{3.5cm}p{3cm}p{5cm}}
         \toprule
-        \textbf{Algorithme} & \textbf{Complexité temporelle} & \textbf{Complexité spatiale} & \textbf{Hypothèses / Contraintes} \\
+        \textbf{Algorithme} & \textbf{Complexité en temps} & \textbf{Complexité en espace} & \textbf{Hypothèses / Contraintes} \\
         \midrule
         Naïf exhaustif 
             & $\mathcal{O}(2^{2n})$ 
             & $\mathcal{O}(2^{2n})$ 
-            & Aucune. DDT complète. Inutilisable dès $n > 16$. \\
+            & Aucune. DDT complète. Inutilisable dès $n > 32$. \\
         Naïf optimisé (pDDT)
             & $\mathcal{O}(2^{n} \cdot p^{-1})$ 
             & $\mathcal{O}(2^{n})$ 
-            & Aucune. Requiert le pré-calcul complet de $F$. \\
+            & Aucune. \\
         Fondamental (collisions)
             & $\tilde{\mathcal{O}}(2^{n/2} \cdot p^{-1})$ 
             & $\tilde{\mathcal{O}}(2^{n/2} \cdot p^{-1})$ 
             & $g_\gamma$ pseudo-aléatoire. Mémoire prohibitive dès $n \ge 32$. \\
-        Sans mémoire (\textit{Memoryless})
+        Sans mémoire
             & $\tilde{\mathcal{O}}(2^{n/2} \cdot p^{-2})$ 
             & $\mathcal{O}(1)$ 
-            & $g_\gamma$ pseudo-aléatoire. Pénalité temporelle d'un facteur $p^{-1}$. \\
-        Compromis (\textit{Tradeoff})
+            & $g_\gamma$ pseudo-aléatoire. \\
+        Compromis
             & $\tilde{\mathcal{O}}(2^{n/2} \cdot p^{-1})$ 
             & $\tilde{\mathcal{O}}(p^{-2})$ 
             & $g_\gamma$ pseudo-aléatoire. Plafond mémoire $S = \tilde{\mathcal{O}}(p^{-2})$. \\
-        Pire cas (\textit{Worst-Case})
+        Pire cas
             & $\tilde{\mathcal{O}}(2^{n/2} \cdot p^{-3/2})$ 
             & $\tilde{\mathcal{O}}(2^{n/2} \cdot p^{-1/2})$ 
             & Aucune. Robuste face à toute distribution adverse. \\
@@ -683,7 +684,7 @@ Une piste d'amélioration théorique (non implémentée dans nos travaux) consis
 
 Afin d'évaluer l'efficacité des différentes stratégies de recherche, nous avons mené une campagne de tests sur un chiffrement SPN de 16 bits (3 tours, $p=2^{-7}$). Les évaluations ont été exécutées de manière strictement séquentielle sur un échantillon fixe de 500 clés aléatoires pour lisser les éventuelles variations matérielles et garantir la fiabilité des moyennes temporelles.
 
-Par ailleurs, l'algorithme de « pire cas » a dû être exclu de ce comparatif. La garantie de sécurité mathématique qu'il offre impose un nombre d'itérations colossal ($S = 200n/p$), entraînant une surcharge temporelle et spatiale qui rend son exécution impraticable, même sur un bloc réduit de 16 bits. Les résultats des méthodes évaluées sont synthétisés dans le Tableau~\ref{tab:perf_spn16}.
+Par ailleurs, l'algorithme de « pire cas » a dû être exclu de ce comparatif. La garantie de sécurité mathématique qu'il offre impose un nombre d'itérations prohibitif ($S = 200n/p$), entraînant une surcharge temporelle et spatiale qui rend son exécution impraticable, même sur un bloc réduit de 16 bits. Les résultats des méthodes évaluées sont synthétisés dans le Tableau~\ref{tab:perf_spn16}.
 
 \begin{table}[htbp]
     \centering
@@ -701,17 +702,17 @@ Par ailleurs, l'algorithme de « pire cas » a dû être exclu de ce comparatif.
     \end{tabular}
 \end{table}
 
-L'analyse de cette hiérarchie de performances confirme la pertinence des modèles théoriques. L'algorithme naïf exhaustif s'effondre logiquement avec un temps moyen de 12,239~secondes, illustrant l'impossibilité pratique d'une recherche par force brute à plus grande échelle. Si l'approche naïve optimisée divise ce temps par près de quatre (3,373~s), elle reste fondamentalement limitée par sa mécanique de recherche linéaire.
+L'analyse de cette hiérarchie de performances confirme la pertinence des modèles théoriques. L'algorithme naïf exhaustif s'effondre logiquement avec un temps moyen de 12,239~secondes, illustrant l'impossibilité pratique d'une recherche par force brute à plus grande échelle. Si l'approche naïve optimisée divise ce temps par près de quatre (3,373~s), elle reste fondamentalement limitée par son exploration séquentielle en $\mathcal{O}(2^n)$.
 
 Les approches exploitant les collisions révèlent quant à elles pleinement leur supériorité. L'algorithme fondamental (2,831~s) s'impose comme la solution la plus performante, validant empiriquement l'avantage de la complexité en $\mathcal{O}(2^{n/2} \cdot p^{-1})$ permise par le paradoxe des anniversaires. 
 
-On observe logiquement que la variante de compromis temps-mémoire (2,984~s) se place très légèrement en retrait. Cet écart s'explique par la surcharge logicielle (\textit{overhead}) induite par le découpage en lots successifs et la gestion continue des filtres. Sur une architecture de 16 bits où la quantité de RAM n'est pas un facteur limitant, l'algorithme fondamental pur demeure donc l'option la plus directe et la plus rapide.
+On observe logiquement que la variante de compromis temps-mémoire (2,984~s) se place très légèrement en retrait. Cet écart s'explique par la surcharge logicielle (\textit{overhead}) induite par le découpage en lots successifs et la gestion continue des filtres. Sur une primitive de 16 bits où la quantité de RAM n'est pas un facteur limitant, l'algorithme fondamental pur demeure donc l'option la plus directe et la plus rapide.
 
 \section{Les limites de l'approche naïve face à Speck 32/64 (3 tours)}
 
 Pour illustrer concrètement l'explosion combinatoire liée à l'augmentation de la taille du bloc, nous avons transposé nos expérimentations sur le chiffrement Speck 32/64. Afin de conserver des temps de calcul mesurables pour l'algorithme naïf optimisé, nous avons ciblé une caractéristique sur un nombre réduit de 3 tours, offrant une probabilité théorique très favorable de $p=2^{-3}$.
 
-Le Tableau~\ref{tab:perf_speck} synthétise les résultats de cette campagne de mesures. Contrairement aux tests précédents sur 16 bits, les limites matérielles et temporelles nous ont obligés à repenser notre protocole.
+Le Tableau~\ref{tab:perf_speck} synthétise les résultats. Contrairement aux tests précédents sur 16 bits, les limites matérielles et temporelles nous ont obligés à repenser notre protocole.
 
 \begin{table}[htbp]
     \centering
@@ -728,17 +729,17 @@ Le Tableau~\ref{tab:perf_speck} synthétise les résultats de cette campagne de 
     \end{tabular}
 \end{table}
 
-L'analyse de ces résultats en conditions réelles met en lumière le «~mur de la scalabilité~» auquel se heurtent les approches triviales. L'impossibilité d'une attaque par force brute pure devient d'abord évidente : avec une complexité quadratique en $\mathcal{O}(2^{2n})$, l'algorithme naïf exhaustif exige ici l'évaluation de $2^{64}$ paires de textes clairs. Face à ce volume de données astronomique, l'exécution a dû être purement et simplement abandonnée. Ce vide statistique dans notre comparatif prouve qu'au-delà des algorithmes d'étude très réduits, la recherche globale par force brute est physiquement irréalisable. De son côté, bien qu'il réduise considérablement l'espace de recherche, l'algorithme naïf optimisé finit lui aussi par montrer ses limites absolues. Avec un temps d'exécution moyen dépassant les 10~500~secondes (soit près de trois heures) pour une simple attaque sur trois tours bénéficiant d'une probabilité pourtant très favorable ($p=2^{-3}$), la méthode devient inexploitable. Tenter des attaques plus profondes, nécessitant d'atteindre des seuils comme $p=2^{-9}$ sur cinq tours, exigerait des mois de calcul ininterrompu.
+L'analyse de ces résultats met en évidence le « mur de la scalabilité » auquel se heurtent les approches triviales. L'attaque par force brute pure ($\mathcal{O}(2^{2n})$) exige l'évaluation de $2^{64}$ paires, un volume de calcul prohibitif qui justifie son abandon et prouve son inapplicabilité dès $n=32$. De son côté, l'algorithme naïf optimisé atteint également ses limites : il requiert près de trois heures (10\,500 s) pour traiter une attaque sur trois tours ($p=2^{-3}$). Cibler des différentielles plus profondes (ex. $p=2^{-9}$ sur cinq tours) exigerait dès lors des mois de calcul ininterrompu.
 
-À l'inverse, l'exploitation des collisions marque une évolution importante. L'algorithme fondamental démontre ici toute la puissance de sa conception en $\mathcal{O}(2^{n/2} \cdot p^{-1})$. En transformant le problème originel grâce au paradoxe des anniversaires, il traite exactement la même analyse en moins de deux secondes. L'accélération massive mesurée d'un facteur 5447 par rapport à l'approche naïve optimisée illustre de manière spectaculaire le point de bascule algorithmique théorique évoqué précédemment. 
+À l'inverse, l'algorithme fondamental démontre la supériorité de l'approche par collisions ($\mathcal{O}(2^{n/2} \cdot p^{-1})$). En résolvant le même problème en moins de deux secondes, il offre une accélération massive d'un facteur 5447 par rapport à la méthode naïve optimisée. Ce résultat illustre le point de bascule théorique permis par l'exploitation du paradoxe des anniversaires.
 
-Ce comparatif grandeur nature justifie définitivement les observations faites sur le SPN 16 bits. Ce qui n'apparaissait que comme un léger avantage temporel sur un petit bloc se transforme en un gouffre de performance infranchissable sur une architecture de 32 bits.
+Ce comparatif grandeur nature confirme les observations faites sur le SPN 16 bits. Ce qui n'apparaissait que comme un léger avantage temporel sur un petit bloc se transforme en un gouffre de performance infranchissable sur une primitive de 32 bits.
 
 \section{Validation expérimentale et résolution matérielle (Speck 5 et 6 tours)}
 
 \subsection{Reproduction des résultats sur 5 tours de Speck 32/64}
 
-Pour valider notre implémentation, nous avons reproduit les résultats de l'article de référence (Section 2.5) en étudiant la meilleure caractéristique différentielle sur 5 tours de Speck 32/64 :
+Pour valider notre implémentation, nous avons reproduit les résultats de l'article de référence (Section 2.5) en étudiant la meilleure caractéristique différentielle sur 5 tours de Speck 32/64 connue à ce jour \cite{DDKRS23} :
 $$ (0\text{x}0211, 0\text{x}0a04) \to (0\text{x}8000, 0\text{x}840a) $$
 La probabilité théorique attendue pour cette différentielle est d'environ $p \approx 2^{-9}$. 
 
@@ -751,11 +752,11 @@ Atteindre ce seuil avec l'algorithme fondamental nécessiterait de stocker envir
     \label{fig:densite_speck_5t}
 \end{figure}
 
-Les résultats, présentés sur la Figure~\ref{fig:densite_speck_5t}, montrent un comportement inattendu. D'un côté, pour les 608 clés qui ont dépassé le seuil de détection, la moyenne mesurée est de $\mu \approx 0,00197$, ce qui confirme très bien la probabilité de $2^{-9}$ donnée par la littérature. De l'autre côté, l'algorithme n'a trouvé aucune collision pour les 392 clés restantes, affichant une probabilité de $0$. 
+Les résultats, présentés sur la Figure~\ref{fig:densite_speck_5t}, montrent un comportement inattendu. D'un côté, pour les 608 clés qui ont dépassé le seuil de détection, la moyenne mesurée est de $\mu \approx 2^{-8,98}$, ce qui confirme très bien la probabilité de $2^{-9}$ donnée par la littérature. De l'autre côté, l'algorithme n'a trouvé aucune collision pour les 392 clés restantes, affichant une probabilité de $0$. 
 
-Face à ce grand nombre de faux négatifs ($39,2\,\%$ de l'échantillon), nous avons cherché à savoir si ce problème venait du chiffrement lui-même (certaines clés bloquant la différence) ou s'il s'agissait d'un défaut de notre outil de recherche. 
+Face à ce grand nombre de faux négatifs ($39,2\,\%$ de l'échantillon), nous avons cherché à savoir si ce problème venait du chiffrement lui-même (certaines clés bloquant la différentielle) ou s'il s'agissait d'un défaut de notre outil de recherche. 
 
-Pour le vérifier, nous avons pris un groupe de contrôle de 100 clés non détectées ($p=0$) et de 100 clés bien détectées ($p>0$). Nous les avons testées directement : pour chaque clé, $2^{20}$ paires aléatoires ont été générées et chiffrées pour calculer la probabilité exacte, sans utiliser la méthode des collisions et ses filtres. Les résultats de ce test sont clairs : les 200 clés affichent toutes une probabilité proche de $0,0019$. La caractéristique existe donc bien, quelle que soit la clé.
+Pour le vérifier, nous avons pris un groupe de contrôle de 100 clés non détectées ($p=0$) et de 100 clés bien détectées ($p>0$). Nous les avons testées directement : pour chaque clé, $2^{20}$ paires aléatoires ont été générées et chiffrées pour estimer la probabilité exacte, sans utiliser la méthode des collisions et ses filtres. Les résultats de ce test sont clairs : les 200 clés affichent toutes une probabilité proche de $2^{-9}$. La différentielle existe donc bien pour ces 200 clés.
 
 Le fait que notre algorithme par compromis rate ces 392 clés souligne les limites de cette méthode. Plusieurs raisons peuvent expliquer ces échecs.
 
@@ -763,7 +764,7 @@ La première explication réside dans les limites de l'hypothèse d'indépendanc
 
 À cette contrainte théorique s'ajoute un manque de détails sur l'implémentation pratique. L'algorithme de compromis n'est abordé que de façon conceptuelle dans les annexes des travaux de Dinur et al. Les auteurs indiquent qu'il faut générer des lots successifs de collisions en modifiant le substitut $\gamma$ à chaque itération, mais la gestion concrète de la mémoire et le transfert des candidats d'un lot à l'autre ne sont pas formalisés en pseudo-code. Nos propres choix de programmation pour pallier ce manque ont donc pu introduire des biais de filtrage, éliminant par erreur de bons candidats. Pour s'affranchir de ces biais et garantir une détection certaine, il serait nécessaire d'utiliser l'algorithme de « pire cas », dont l'efficacité a été validée par les chercheurs de l'état de l'art grâce à l'évaluation massive de nombreux substituts $\gamma$. Cependant, comme nous l'avons établi précédemment, cette méthode exige des ressources matérielles beaucoup trop lourdes pour notre environnement de test.
 
-Pour conclure, notre implémentation est parvenue à extraire la caractéristique de manière entièrement automatisée pour $60,8\,\%$ des clés, alors même que notre vérification manuelle a prouvé que la différentielle était présente dans l'intégralité des cas. Ce résultat illustre directement la complexité liée à l'implémentation pratique de tels algorithmes. Le passage de la théorie mathématique à un outil logiciel contraint par la mémoire impose des choix d'architecture qui se heurtent parfois à la réalité algébrique du chiffrement. Cela confirme la pertinence et la nécessité de l'algorithme de « pire cas » pour assurer une vérification systématique et fiable, bien que son coût matériel reste en pratique prohibitif.
+Pour conclure, notre implémentation est parvenue à extraire la différentielle de manière entièrement automatisée pour $60,8\,\%$ des clés, alors même que notre vérification manuelle a prouvé que la différentielle était présente dans l'intégralité des cas. Ce résultat illustre directement la complexité liée à l'implémentation pratique de tels algorithmes. Le passage de la théorie mathématique à un outil logiciel contraint par la mémoire impose des choix d'architecture qui se heurtent parfois à la réalité algébrique du chiffrement. Cela confirme la pertinence et la nécessité de l'algorithme de « pire cas » pour assurer une vérification systématique et fiable, bien que son coût matériel reste en pratique prohibitif.
 
 \subsection{Reproduction des résultats sur 6 tours de Speck 32/64}
 
@@ -791,17 +792,17 @@ Nous avons limité la RAM à 50 millions d'entrées par lot (environ 1,14 Go). P
     \end{tabular}
 \end{table}
 
-Après environ 6 heures de calcul (21 747 secondes), le programme a identifié 6 candidats (voir Tableau~\ref{tab:speck_6tours}). Le premier candidat (\texttt{0x8d0a9d20}) affiche une probabilité mesurée de $0,000145$, se plaçant ainsi devant le candidat (\texttt{0x850a9520}), évalué à $0,000092$. Pourtant, ce dernier correspond à la meilleure caractéristique connue dans la littérature pour 6 tours. Afin de vérifier ce classement et de déterminer s'il s'agissait d'une véritable découverte ou d'un simple biais, nous avons procédé à une vérification globale sur 100 clés aléatoires, en testant $2^{24}$ paires de textes clairs par clé. En moyenne, la probabilité du premier candidat s'effondre à $0,000061$, tandis que celle du candidat de la littérature se stabilise à $0,000114$, confirmant ainsi son statut de meilleur candidat théorique ($2^{-13} \approx 0,000122$). Ce test sur 6 tours valide notre implémentation C++ et montre sa capacité à traiter de grands volumes de données tout en respectant les limites de la mémoire. Il rappelle également qu'une phase de vérification globale reste indispensable pour distinguer les véritables failles cryptographiques des simples erreurs d'évaluation.
+Après environ 6 heures de calcul (21 747 secondes), le programme a identifié 6 candidats (voir Tableau~\ref{tab:speck_6tours}). Le premier candidat (\texttt{0x8d0a9d20}) affiche une probabilité mesurée de $0,000145$, se plaçant ainsi devant le candidat (\texttt{0x850a9520}), évalué à $0,000092$. Pourtant, ce dernier correspond à la meilleure différentielle connue dans la littérature pour 6 tours \cite{DDKRS23}. Afin de vérifier ce classement et de déterminer s'il s'agissait d'une véritable découverte ou d'un simple biais, nous avons procédé à une vérification globale sur 100 clés aléatoires, en testant $2^{24}$ paires de textes clairs par clé. En moyenne, la probabilité du premier candidat s'effondre à $0,000061$, tandis que celle du candidat de la littérature se stabilise à $0,000114$, confirmant ainsi son statut de meilleur candidat théorique ($2^{-13} \approx 0,000122$). Ce test sur 6 tours valide notre implémentation C++ et montre sa capacité à traiter de grands volumes de données tout en respectant les limites de la mémoire. Il rappelle également qu'une phase de vérification globale reste indispensable pour distinguer les véritables failles cryptographiques des simples erreurs d'évaluation.
 
 \section{Conclusion générale et perspectives}
 
 La cryptanalyse différentielle, bien que théorisée depuis plus de trente ans, continue de se heurter à un défi mathématique et physique absolu : l'explosion combinatoire. Au travers de ce Travail d'Étude et de Recherche, notre objectif n'était pas seulement d'étudier la littérature scientifique, mais de confronter les théories de l'état de l'art à la réalité de la programmation logicielle et matérielle.
 
-Le développement de notre bibliothèque C++ nous a permis d'explorer l'intégralité du spectre algorithmique. Nous avons d'abord implémenté les méthodes de recherche par force brute, dites naïves. Bien que ces dernières se révèlent efficaces sur des « chiffrements jouets » (notamment grâce à une parallélisation triviale sur 16 bits), leur complexité spatio-temporelle en $\mathcal{O}(2^{2n})$ et $\mathcal{O}(2^n \cdot p^{-1})$ les condamne définitivement face à l'augmentation de la taille du bloc. L'effondrement de l'algorithme naïf optimisé sur Speck 32/64, nécessitant près de 3 heures de calcul pour analyser une simple caractéristique sur 3 tours, illustre parfaitement le « mur de la scalabilité ».
+Le développement de notre bibliothèque C++ nous a permis d'explorer l'intégralité du spectre algorithmique décrit dans le papier \cite{DDKRS23}. Nous avons d'abord implémenté les méthodes de recherche par force brute, dites naïves. Bien que ces dernières se révèlent efficaces sur des « chiffrements jouets » (notamment grâce à une parallélisation triviale sur 16 bits), leur complexité en temps et en mémoire en $\mathcal{O}(2^{2n})$ et $\mathcal{O}(2^n \cdot p^{-1})$ les condamne définitivement face à l'augmentation de la taille du bloc. L'effondrement de l'algorithme naïf optimisé sur Speck 32/64, nécessitant près de 3 heures de calcul pour analyser une simple caractéristique sur 3 tours, illustre parfaitement le « mur de la scalabilité ».
 
 Pour briser ce mur, l'adoption de l'approche fondamentale de l'article, basée sur la différentielle de substitut et le paradoxe des anniversaires, marque une avancée algorithmique majeure. En réduisant la complexité temporelle à l'ordre de $\mathcal{O}(2^{n/2} \cdot p^{-1})$, cet algorithme est parvenu à expédier la même analyse sur Speck en moins de 2 secondes, représentant une accélération d'un facteur 5447.
 
-Cependant, nos expérimentations ont également mis en lumière le principal point faible de cette puissance de calcul : l'empreinte mémoire. Atteindre des différentielles de l'ordre de $p=2^{-9}$ sur 32 bits requiert déjà plusieurs gigaoctets de mémoire vive, rendant l'algorithme fondamental pur inexploitable pour des paramètres de sécurité modernes (64 ou 128 bits). L'implémentation de la variante de compromis temps-mémoire, s'appuyant sur l'échantillonnage par lots et les filtres de fréquence, s'est avérée être la solution indispensable. En échangeant délibérément du temps de calcul contre de l'espace RAM, une dégradation quadratique maîtrisée et modélisée, nous avons prouvé qu'il est possible de faire aboutir des recherches complexes sur des ordinateurs personnels standards.
+Cependant, nos expérimentations ont également mis en lumière la limite physique de cet algorithme : son empreinte mémoire. Détecter des différentielles avec des probabilités aussi petite que $p=2^{-9}$ sur un bloc de 32 bits requiert déjà plusieurs gigaoctets de mémoire vive, rendant l'algorithme fondamental pur inexploitable pour des paramètres de sécurité modernes (64 ou 128 bits). L'implémentation de la variante de compromis temps-mémoire, s'appuyant sur l'échantillonnage par lots et les filtres de fréquence, s'est alors imposée comme la solution indispensable. En acceptant un surcoût temporel prévisible et maîtrisé pour contraindre l'espace RAM alloué, nous avons prouvé qu'il est possible de faire aboutir des recherches complexes sur des ordinateurs personnels standards.
 
 \vspace{0.5cm}
 
