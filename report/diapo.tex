@@ -73,9 +73,116 @@
 % =========================================================
 % PARTIE 2 : ALEXANDRE FRANÇOIS
 % =========================================================
-\section{Titre de la section 2}
-\begin{frame}{Titre de la section 2}
-    % Contenu...
+% =========================================================
+% PARTIE 2 : ALEXANDRE FRANÇOIS
+% =========================================================
+\section{Efficacité algorithmique : l'approche par collisions}
+
+\begin{frame}{Optimisation du coût temporel : l'approche par collisions}
+    
+    \begin{block}{Réduction de la complexité ($n=64, p=2^{-13}$)}
+        \centering
+        \renewcommand{\arraystretch}{1.3}
+        \small
+        \begin{tabular}{lccc}
+            \toprule
+            \textbf{Algorithme} & \textbf{Formule} & \textbf{Opérations} & \textbf{Faisabilité} \\
+            \midrule
+            Naïf Exhaustif & $2^{2n}$ & $2^{128}$ & Impraticable \\
+            Naïf Optimisé  & $2^n \cdot p^{-1}$ & $2^{77}$ & Supercalculateurs \\
+            \midrule
+            \textbf{Par Collisions} & $\mathbf{2^{n/2} \cdot p^{-1}}$ & $\mathbf{2^{45}}$ & \textbf{Station de travail} \\
+            \bottomrule
+        \end{tabular}
+    \end{block}
+
+    \vspace{0.4cm}
+
+    \begin{itemize}
+        \item \textbf{Paradoxe des anniversaires :} Réduction du coût temporel.
+        \item \textbf{Différenciation par substitut :} Détection globale des collisions.
+    \end{itemize}
+    
+\end{frame}
+
+\begin{frame}{Mécanisme de détection : La fonction dérivée $g_\gamma$}
+    
+    \begin{block}{Définition et Signature différentielle}
+        \[ g_{\gamma}(x) = f(x) \oplus f(x \oplus \gamma) \]
+        Une collision \textbf{$g_{\gamma}(x_1) = g_{\gamma}(x_2)$} révèle la faille : \textbf{$\alpha = x_1 \oplus x_2$}
+    \end{block}
+
+    \vspace{0.3cm}
+
+    \begin{columns}[T]
+        \begin{column}{0.48\textwidth}
+            \centering
+            \textbf{Mode Naïf (Essai-Erreur)}
+            \begin{exampleblock}{}
+                \small
+                \begin{itemize}
+                    \item $\alpha$ est fixé (contrainte).
+                    \item On cherche une collision sur $\beta$.
+                    \item Complexité : $2^n$ tests.
+                \end{itemize}
+            \end{exampleblock}
+        \end{column}
+        
+        \begin{column}{0.48\textwidth}
+            \centering
+            \textbf{Mode Collision (Extraction)}
+            \begin{alertblock}{}
+                \small
+                \begin{itemize}
+                    \item $\alpha$ est libre (inconnue).
+                    \item On cherche une collision sur $g_\gamma$.
+                    \item $\alpha$ est extrait du calcul.
+                \end{itemize}
+            \end{alertblock}
+        \end{column}
+    \end{columns}
+
+    \vspace{0.3cm}
+    \begin{itemize}
+        \item \textbf{Inversion de logique :} On ne subit plus l'entrée, on l'extrait.
+        \item \textbf{Sans hypothèse :} Détection sans hypothèse préalable sur $\alpha$.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Exploitation de la fonction $g_\gamma$ : Le mécanisme du Quatuor}
+    \begin{block}{Construction du quatuor}
+        À partir d'un message $x$, d'une faille $\alpha$ et du substitut $\gamma$, on forme un ensemble de 4 messages :
+        \[ \mathbf{\{x, \quad x \oplus \alpha, \quad x \oplus \gamma, \quad x \oplus \alpha \oplus \gamma\}} \]
+    \end{block}
+
+    \vspace{0.3cm}
+
+    \begin{columns}[T]
+        \begin{column}{0.5\textwidth}
+            \textbf{Le Quatuor « Correct » :}
+            \begin{itemize}
+                \item Le couple $(x, x \oplus \alpha)$ suit la faille $\beta$.
+                \item Le couple translaté par $\gamma$ suit \textbf{aussi} la faille $\beta$.
+            \end{itemize}
+        \end{column}
+        
+        \begin{column}{0.5\textwidth}
+            \textbf{Résultat mathématique :}
+            \small
+            \begin{itemize}
+                \item $g_{\gamma}(x) = f(x) \oplus f(x \oplus \gamma)$
+                \item $g_{\gamma}(x \oplus \alpha) = f(x \oplus \alpha) \oplus f(x \oplus \alpha \oplus \gamma)$
+            \end{itemize}
+            \centering
+            \vspace{0.2cm}
+            \textcolor{UPSPrune}{\textbf{Collision : $g_{\gamma}(x) = g_{\gamma}(x \oplus \alpha)$}}
+        \end{column}
+    \end{columns}
+
+    \vspace{0.4cm}
+    \begin{exampleblock}{Conclusion}
+        La collision de signatures annule la valeur de $\beta$. On détecte la structure de l'entrée sans connaître celle de la sortie.
+    \end{exampleblock}
 \end{frame}
 
 % =========================================================

@@ -100,11 +100,11 @@
 
 \section{Introduction}
 
-La sécurité des communications numériques modernes repose en grande partie sur la robustesse des primitives de chiffrement symétrique. Pour garantir la confidentialité des données, ces algorithmes doivent se comporter comme des permutations parfaitement aléatoires. Néanmoins, à l'exception de constructions théoriques impraticables comme le masque jetable, il est impossible de prouver mathématiquement la sécurité absolue des primitives symétriques modernes. Dès lors, leur évaluation continue par la cryptanalyse s'impose comme une nécessité. Le travail du cryptanalyste consiste alors à déceler des failles dans cette conception en identifiant, par exemple, des biais statistiques permettant de distinguer le chiffrement d'une fonction purement aléatoire. Parmi les techniques les plus puissantes figure la cryptanalyse différentielle \cite{BS91}, introduite par Biham et Shamir à la fin des années 1980. Cette méthode analyse la propagation d'une différence d'entrée spécifique à travers les tours du chiffrement dans l'espoir d'observer une différence de sortie avec une probabilité anormalement élevée.
+La sécurité des communications numériques modernes repose en grande partie sur la robustesse des primitives de chiffrement symétrique. Pour garantir la confidentialité des données, ces algorithmes doivent se comporter comme des permutations parfaitement aléatoires. Néanmoins, à l'exception de constructions théoriques impraticables comme le masque jetable \cite{KL14}, il est impossible de prouver mathématiquement la sécurité absolue des primitives symétriques modernes. Dès lors, leur évaluation continue par la cryptanalyse s'impose comme une nécessité. Le travail du cryptanalyste consiste alors à déceler des failles dans cette conception en identifiant, par exemple, des biais statistiques permettant de distinguer le chiffrement d'une fonction purement aléatoire. Parmi les techniques les plus puissantes figure la cryptanalyse différentielle \cite{BS91}, introduite par Biham et Shamir à la fin des années 1980. Cette méthode analyse la propagation d'une différence d'entrée spécifique à travers les tours du chiffrement dans l'espoir d'observer une différence de sortie avec une probabilité anormalement élevée.
 
-Génériquement, la découverte de telles caractéristiques différentielles reposait sur l'évaluation systématique d'une pléthore de textes clairs. L'approche triviale consiste à construire la table de distribution des différences (DDT) complète. Elle exige une complexité en temps et en mémoire de l'ordre de $2^{2n}$ (où $n$ est la taille du bloc). Si cette méthode est viable pour des chiffrements de taille réduite, elle se heurte à l'explosion combinatoire dès que l'on cible des taille de blocs de 64 ou 128 bits. L'évaluation exhaustive devient alors physiquement impossible, car elle requiert des ressources qui dépassent les capacités des supercalculateurs mondiaux.
+Génériquement, la découverte de telles caractéristiques différentielles reposait sur l'évaluation systématique d'une pléthore de textes clairs. L'approche triviale consiste à construire la table de distribution des différences (DDT) complète. Elle exige une complexité en temps et en mémoire de l'ordre de $2^{2n}$ (où $n$ est la taille du bloc). Si cette méthode est viable pour des chiffrements de taille réduite, elle se heurte à l'explosion combinatoire dès que l'on cible des tailles de blocs de 64 ou 128 bits. L'évaluation exhaustive devient alors physiquement impossible, car elle requiert des ressources qui dépassent les capacités des supercalculateurs mondiaux.
 
-C'est dans ce contexte que s'inscrivent les algorithmes de recherche probabilistes basés sur les collisions. En exploitant des propriétés mathématiques telles que par l'utilisation d'une dérivée de substitution et le paradoxe des anniversaires, il est théoriquement possible de ramener cette complexité à l'ordre de $2^{n/2} \cdot p^{-1}$ (où $p$ représente la probabilité de la différentielle recherchée)
+C'est dans ce contexte que s'inscrivent les algorithmes de recherche probabilistes basés sur les collisions. En exploitant des propriétés mathématiques telles que l'utilisation d'une dérivée de substitution et le paradoxe des anniversaires, il est théoriquement possible de ramener cette complexité à l'ordre de $2^{n/2} \cdot p^{-1}$ (où $p$ représente la probabilité de la différentielle recherchée)
 
 Le présent Travail d'Étude et de Recherche (TER) porte sur cette avancée théorique. Notre objectif n'a pas été de nous limiter à une étude bibliographique, mais de développer un moteur d'analyse cryptographique hautes performances en C++ afin de confronter ces modèles mathématiques à la réalité de la programmation logicielle et matérielle. 
 
@@ -151,7 +151,7 @@ L'évaluation de cette approche naïve met en évidence des limites importantes 
 \begin{itemize}
     \item \textbf{Complexité en temps :} $\mathcal{O}(2^{2n})$. Il y a approximativement $2^n$ différences d'entrées $\alpha$ à tester. Pour chacune d'elles, l'algorithme parcourt les $2^n$ messages $x$ afin d'évaluer les paires $(x, x \oplus \alpha)$. Puisque l'évaluation de chaque paire requiert deux appels à la fonction de chiffrement ($F(x)$ d'une part, et $F(x \oplus \alpha)$ d'autre part), le coût total de la recherche s'élève à environ $2 \times 2^{2n}$ opérations. Il est important de noter que cette complexité est exponentielle par rapport au paramètre de taille du bloc $n$. Cette complexité exponentielle rend la méthode strictement inutilisable en temps raisonnable dès que $n > 40$. 
     \item \textbf{Complexité en données :} $\mathcal{O}(2^n)$. L'algorithme nécessite le chiffrement de l'ensemble de l'espace des textes clairs possibles.
-    \item \textbf{Complexité en espace (mémoire) :} $\mathcal{O}(2^{2n})$. Stocker la DDT complète requiert l'allocation d'une matrice de taille $2^n \times 2^n$ entiers. Cette contrainte sature instantanément la mémoire physique dès que l'on aborde des tailles de blocs standards (typiquement 64 ou 128 bits pour les algorithmes modernes comme l'AES). À titre d'exemple, la construction d'une DDT pour un simple bloc de 64 bits générerait $2^{128}$ entrées. Même en supposant qu'une entrée ne pèse qu'un seul octet, la table exigerait des milliards de milliards de téraoctets ($2^{88}$ To) de mémoire vive, dépassant de loin les capacités actuels des supercalculateurs.
+    \item \textbf{Complexité en espace (mémoire) :} $\mathcal{O}(2^{2n})$. Stocker la DDT complète requiert l'allocation d'une matrice de taille $2^n \times 2^n$ entiers. Cette contrainte sature instantanément la mémoire physique dès que l'on aborde des tailles de blocs standards (typiquement 64 ou 128 bits pour les algorithmes modernes comme l'AES). À titre d'exemple, la construction d'une DDT pour un simple bloc de 64 bits générerait $2^{128}$ entrées. Même en supposant qu'une entrée ne pèse qu'un seul octet, la table exigerait des milliards de milliards de téraoctets ($2^{88}$ To) de mémoire vive, dépassant de loin les capacités actuelles des supercalculateurs.
 \end{itemize}
 
 \subsection{De la théorie à la pratique : Nos optimisations}
@@ -159,7 +159,7 @@ L'évaluation de cette approche naïve met en évidence des limites importantes 
 Pour pouvoir exécuter cette recherche exhaustive efficacement, même sur des « chiffrements jouets » ($n \le 16$), l'implémentation théorique brute a dû être entièrement repensée. Dès le début du projet, le choix du langage C++ s'est imposé pour nous offrir un contrôle strict sur la gestion de la mémoire et les performances d'exécution (l'intégralité de notre code source optimisé est disponible sur notre dépôt GitHub public : \url{https://github.com/Redak92/cryptanalyse-differentielle}, dans le fichier \url{src/analysis/DifferentialSearch.cpp}). Nous avons articulé notre approche autour de trois optimisations majeures.
 
 \paragraph{Le pré-calcul des chiffrés (compromis temps/mémoire) :}
-Pour réduire la coût lié aux appels répétés à la fonction de chiffrement, nous avons mis en place un compromis temps/mémoire. Au lieu de calculer les chiffrés à la volée en permanence, l'ensemble des $2^n$ messages possibles est évalué une seule fois au tout début de l'exécution. En effet, dans une implémentation naïve, l'évaluation de la paire $(x, x \oplus \alpha)$ exige de calculer la primitive deux fois par itération. Puisque l'espace des messages est intégralement parcouru pour chaque différence $\alpha$, une même valeur $F(x)$ se retrouve recalculée exactement deux fois par boucle (une fois en tant que terme de gauche, et une fois en tant que terme translaté), soit près de $2^{n+1}$ fois sur l'ensemble de la recherche. Grâce à ce pré-calcul, les évaluations sont stockées dans une table des valeurs (\textit{look-up table}) de la fonction, que nous noterons $T$. Le calcul de la différence de sortie $\beta$ se résume alors à deux simples accès mémoire directs suivis d'une disjonction exclusive : $T[x] \oplus T[x \oplus \alpha]$.
+Pour réduire le coût lié aux appels répétés à la fonction de chiffrement, nous avons mis en place un compromis temps/mémoire. Au lieu de calculer les chiffrés à la volée en permanence, l'ensemble des $2^n$ messages possibles est évalué une seule fois au tout début de l'exécution. En effet, dans une implémentation naïve, l'évaluation de la paire $(x, x \oplus \alpha)$ exige de calculer la primitive deux fois par itération. Puisque l'espace des messages est intégralement parcouru pour chaque différence $\alpha$, une même valeur $F(x)$ se retrouve recalculée exactement deux fois par boucle (une fois en tant que terme de gauche, et une fois en tant que terme translaté), soit près de $2^{n+1}$ fois sur l'ensemble de la recherche. Grâce à ce pré-calcul, les évaluations sont stockées dans une table des valeurs (\textit{look-up table}) de la fonction, que nous noterons $T$. Le calcul de la différence de sortie $\beta$ se résume alors à deux simples accès mémoire directs suivis d'une disjonction exclusive : $T[x] \oplus T[x \oplus \alpha]$.
 
 \paragraph{Du stockage exhaustif au filtrage à la volée :}
 Lors de l'implémentation, nous avons rapidement pris conscience qu'allouer et conserver en mémoire l'intégralité d'une DDT classique allait inévitablement saturer la RAM, l'immense majorité de ces $2^{2n}$ entrées étant strictement non significatives (le bruit statistique). Pour pallier ce problème, nous avons modifié la logique en introduisant un paramètre de seuil de probabilité pour ne générer qu'une DDT partielle (pDDT). Le programme agit ainsi comme un filtre dynamique : il alloue un unique tableau temporaire de compteurs de taille $2^n$. À la fin de chaque itération sur la différence d'entrée $\alpha$, seules les différentielles atteignant le seuil critique (les véritables vulnérabilités) sont extraites et sauvegardées. Le tableau est ensuite simplement réinitialisé pour l'itération suivante. Tout le bruit de fond est ainsi ignoré, ce qui évite le stockage massif d'une matrice en $\mathcal{O}(2^{2n})$ et réduit drastiquement l'empreinte mémoire de la structure finale.
@@ -240,7 +240,7 @@ Le choix du seuil de validation $count \ge 2$ est crucial pour filtrer les faux 
 
 Pour évaluer la probabilité qu'un tel bruit génère un faux positif, nous utilisons le \textbf{développement limité de Taylor} de l'exponentielle au voisinage de zéro.
 
-Ce développement est ici indispensable car $\lambda$ est extrêmement petit. En effet, par développement de Taylor de $e^{-\lambda}$ au voisinage de $0$, on obtient $e^{-\lambda} = 1 - \lambda + \frac{\lambda^2}{2} + o(\lambda^2)$, ce qui permet de simplifier l'exponentielle et d'évaluer des probabilités extrêmement faibles. En injectant cette approximation dans notre formule factorisée, le calcul devient :
+Ce développement est ici indispensable car $\lambda$ est extrêmement petit. En effet, par développement de Taylor de $e^{-\lambda}$ au voisinage de $0$ \cite{Ramis13}, on obtient $e^{-\lambda} = 1 - \lambda + \frac{\lambda^2}{2} + o(\lambda^2)$, ce qui permet de simplifier l'exponentielle et d'évaluer des probabilités extrêmement faibles. En injectant cette approximation dans notre formule factorisée, le calcul devient :
 \begin{equation*}
     P(X \ge 2) \approx 1 - \left(1 - \lambda + \frac{\lambda^2}{2}\right)(1 + \lambda) = 1 - \left(1 + \lambda - \lambda - \lambda^2 + \frac{\lambda^2}{2} + \frac{\lambda^3}{2}\right)
 \end{equation*}
@@ -475,7 +475,7 @@ Cette limitation physique absolue justifie la nécessité de recourir à des var
 
 Pour pallier le problème rédhibitoire de l'empreinte spatiale de l'algorithme fondamental, les auteurs présentent à la page 13 de leur article une variante dite « sans mémoire » (\textit{memoryless}). Cette approche permet de ramener la consommation de mémoire vive à une constante $\mathcal{O}(1)$.
 
-Cette variante abandonne complètement la génération d'un large échantillon stocké dans une table de hachage. À la place, elle utilise l'algorithme de détection de cycles de Pollard pour trouver des collisions dans la fonction $g_{\gamma}$ à la volée, une par une. Chaque fois qu'une collision est détectée, la différence $(\alpha, \beta)$ correspondante est immédiatement extraite et soumise à la phase de vérification exhaustive. L'algorithme ne stocke aucun historique.
+Cette variante abandonne complètement la génération d'un large échantillon stocké dans une table de hachage. À la place, elle utilise l'algorithme de détection de cycles de Pollard \cite{Pollard75} pour trouver des collisions dans la fonction $g_{\gamma}$ à la volée, une par une. Chaque fois qu'une collision est détectée, la différence $(\alpha, \beta)$ correspondante est immédiatement extraite et soumise à la phase de vérification exhaustive. L'algorithme ne stocke aucun historique.
 
 Cependant, cette économie de mémoire se traduit par une pénalité significative sur la complexité en temps. Puisque l'algorithme perd la vision globale offerte par le paradoxe des anniversaires sur un grand tableau, il doit évaluer de très nombreuses collisions inutiles avant de tomber sur un quadruplet correct. Plus précisément, il faut extraire en moyenne $\mathcal{O}(p^{-2})$ collisions de la fonction $g_{\gamma}$ pour obtenir une correspondance valide. La recherche d'une collision par la méthode de Pollard coûtant $\mathcal{O}(2^{n/2})$, la complexité temporelle globale grimpe à :
 \begin{equation*}
@@ -611,7 +611,7 @@ Pour séparer le signal du bruit, le seuil d'acceptation est fixé exactement à
 \paragraph{3. Le nombre d'itérations $S$ :}
 Fixer une moyenne parfaite ne suffit pas : il faut répéter l'expérience un nombre de fois $S$ suffisamment grand pour se prémunir des fluctuations statistiques. Sachant qu'il existe $2^{2n}$ combinaisons possibles de fausses différentielles $(\alpha, \beta)$, la probabilité qu'une seule d'entre elles franchisse le seuil par erreur doit être infime (strictement inférieure à $2^{-2n}$). 
 
-Dans le Lemme 2 de l'article, les auteurs utilisent la \textbf{borne de Chernoff} pour évaluer cette probabilité d'erreur, qui s'exprime sous la forme exponentielle $e^{-\frac{S \cdot p}{50}}$.
+Dans le Lemme 2 de l'article, les auteurs utilisent la \textbf{borne de Chernoff} \cite{MU17} pour évaluer cette probabilité d'erreur, qui s'exprime sous la forme exponentielle $e^{-\frac{S \cdot p}{50}}$.
 Afin de sécuriser le résultat face aux $2^{2n}$ fausses pistes, ils choisissent d'imposer un taux d'erreur encore plus strict, fixé à $e^{-4n}$ (soit environ $2^{-5,7n}$). Pour trouver le nombre d'itérations $S$ nécessaire, il suffit de résoudre l'égalité entre ces deux exposants :
 \begin{equation*}
     \frac{S \cdot p}{50} = 4n \implies S \cdot p = 200n \implies S = \frac{200n}{p}
@@ -686,7 +686,7 @@ Au terme de cette analyse détaillant la transition de la recherche exhaustive v
 
 \section{Analyse comparative des performances sur SPN 16 bits}
 
-Afin d'évaluer l'efficacité des différentes stratégies de recherche, nous avons mené une campagne de tests sur un chiffrement SPN de 16 bits (3 tours, $p=2^{-7}$). Les évaluations ont été exécutées de manière strictement séquentielle sur un échantillon fixe de 500 clés aléatoires pour lisser les éventuelles variations matérielles et garantir la fiabilité des moyennes temporelles.
+Afin d'évaluer l'efficacité des différentes stratégies de recherche, nous avons mené une campagne de tests sur un chiffrement SPN (\textit{Substitution-Permutation Network}) \cite{Heys02} de 16 bits (3 tours, $p=2^{-7}$). Les évaluations ont été exécutées de manière strictement séquentielle sur un échantillon fixe de 500 clés aléatoires pour lisser les éventuelles variations matérielles et garantir la fiabilité des moyennes temporelles.
 
 Par ailleurs, l'algorithme de « pire cas » a dû être exclu de ce comparatif. La garantie de sécurité mathématique qu'il offre impose un nombre d'itérations prohibitif ($S = 200n/p$), entraînant une surcharge temporelle et spatiale qui rend son exécution impraticable, même sur un bloc réduit de 16 bits. Les résultats des méthodes évaluées sont synthétisés dans le Tableau~\ref{tab:perf_spn16}.
 
@@ -806,7 +806,7 @@ Le développement de notre bibliothèque C++ nous a permis d'explorer l'intégra
 
 Pour briser ce mur, l'adoption de l'approche fondamentale de l'article, basée sur la différentielle de substitut et le paradoxe des anniversaires, marque une avancée algorithmique majeure. En réduisant la complexité temporelle à l'ordre de $\mathcal{O}(2^{n/2} \cdot p^{-1})$, cet algorithme est parvenu à expédier la même analyse sur Speck en moins de 2 secondes, représentant une accélération d'un facteur 5447.
 
-Cependant, nos expérimentations ont également mis en lumière la limite physique de cet algorithme : son empreinte mémoire. Détecter des différentielles avec des probabilités aussi petite que $p=2^{-9}$ sur un bloc de 32 bits requiert déjà plusieurs gigaoctets de mémoire vive, rendant l'algorithme fondamental pur inexploitable pour des paramètres de sécurité modernes (64 ou 128 bits). L'implémentation de la variante de compromis temps-mémoire, s'appuyant sur l'échantillonnage par lots et les filtres de fréquence, s'est alors imposée comme la solution indispensable. En acceptant un surcoût temporel prévisible et maîtrisé pour contraindre l'espace RAM alloué, nous avons prouvé qu'il est possible de faire aboutir des recherches complexes sur des ordinateurs personnels standards.
+Cependant, nos expérimentations ont également mis en lumière la limite physique de cet algorithme : son empreinte mémoire. Détecter des différentielles avec des probabilités aussi petites que $p=2^{-9}$ sur un bloc de 32 bits requiert déjà plusieurs gigaoctets de mémoire vive, rendant l'algorithme fondamental pur inexploitable pour des paramètres de sécurité modernes (64 ou 128 bits). L'implémentation de la variante de compromis temps-mémoire, s'appuyant sur l'échantillonnage par lots et les filtres de fréquence, s'est alors imposée comme la solution indispensable. En acceptant un surcoût temporel prévisible et maîtrisé pour contraindre l'espace RAM alloué, nous avons prouvé qu'il est possible de faire aboutir des recherches complexes sur des ordinateurs personnels standards.
 
 \vspace{0.5cm}
 
@@ -833,6 +833,12 @@ Enfin, pour surmonter l'augmentation inévitable des temps de calcul liée à l'
     Journal of Cryptology, vol. 12, n°1, pp. 1--28, 1999.
     \url{https://link.springer.com/article/10.1007/PL00003816}
 
+    \bibitem{Heys02}
+    H. M. Heys,
+    \textit{A Tutorial on Linear and Differential Cryptanalysis},
+    Cryptologia, vol. 26, n°3, pp. 189--221, 2002.
+    \url{https://www.engr.mun.ca/~howard/PAPERS/ldc_tutorial.pdf}
+
     \bibitem{DDKRS23}
     I. Dinur, O. Dunkelman, N. Keller, E. Ronen \& A. Shamir,
     \textit{Efficient Detection of High Probability Statistical Properties of Cryptosystems via Surrogate Differentiation},
@@ -848,6 +854,26 @@ Enfin, pour surmonter l'augmentation inévitable des temps de calcul liée à l'
     A. François, B. Dupré \& B. Guibert,
     \textit{Moteur d'analyse différentielle en C++}, 2026.
     \url{https://github.com/Redak92/cryptanalyse-differentielle}
+
+    \bibitem{Ramis13}
+    J.-P. Ramis, C. Deschamps et C. Odoux,
+    \textit{Mathématiques Tout-en-un pour la Licence 1},
+    3e édition, Dunod, 2013.
+
+    \bibitem{KL14}
+    J. Katz \& Y. Lindell,
+    \textit{Introduction to Modern Cryptography},
+    2nd edition, Chapman \& Hall/CRC Cryptography and Network Security Series, 2014.
+
+    \bibitem{Pollard75}
+    J. M. Pollard,
+    \textit{A Monte Carlo method for factorization},
+    BIT Numerical Mathematics, vol. 15, n°3, pp. 331--334, 1975.
+
+    \bibitem{MU17}
+    M. Mitzenmacher \& E. Upfal,
+    \textit{Probability and Computing: Randomization and Probabilistic Techniques in Algorithms and Data Analysis},
+    2nd edition, Cambridge University Press, 2017.
 
 \end{thebibliography}
 
