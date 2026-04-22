@@ -60,16 +60,161 @@
 % =========================================================
 \section{Titre de la section 1}
 
-\begin{frame}{Titre de la section 1}
-    \begin{block}{Exemple de bloc}
-        Police Open Sans
-    \end{block}
+\begin{frame}{Introduction à la cryptanalyse différentielle} % =============================================
+    
     \begin{itemize}
-        \item Point 1.
-        \item Point 2.
+        \item Introduite par Eli Biham et Adi Shamir à la fin des années 1980, connue d'IBM depuis les années 1970
+        \item Repose sur l'observation de la propagation d'une différence fixée entre deux messages à travers une fonction de chiffrement. 
+    \end{itemize}
+    
+    \begin{block}{Différence entre deux messages chiffrés}
+        Soit $x$ et $x'$ deux messages clairs, on cherche une différence $\beta$ entre leurs chiffrements, tel que : \\
+        \begin{equation*}
+            F(x) \oplus F(x') = \beta
+        \end{equation*}
+        En exprimant $x'$ en fonction de $x$ et d'une  différence $\alpha$ on trouve : \\
+        \begin{equation*}
+            F(x) \oplus F(x \oplus \alpha) = \beta
+        \end{equation*}
+    \end{block}    
+    
+    On note ainsi la paire $(\alpha,\beta)$ qu'on appelle communément "différentielle"
+\end{frame}
+
+\begin{frame}{Introduction à la cryptanalyse différentielle} % =============================================
+    
+    Pour toute analyse de fonction par cryptographie différentielle on retrouve toujours au moins deux occurences d'une paire $(\alpha,\beta)$.
+    
+    \begin{block}{Preuve : \\ }
+        \begin{align*}
+            F(x \oplus \alpha) \oplus F((x \oplus \alpha) \oplus \alpha) &= F(x \oplus \alpha) \oplus F(x \oplus \alpha \oplus \alpha)\\ &= F(x \oplus \alpha) \oplus F(x)\\ &= \beta
+        \end{align*}    
+    \end{block}
+
+    Une fonction ou chaque paire apparait zéro où deux fois est une fonction APN $(Almost \ Perfectly \ Nonlinear)$
+    \begin{itemize}
+        \item S-box d'AES (quand $n$ impair)
+    \end{itemize}
+
+\end{frame}
+
+\subsection{Algorithme Naïf}
+
+\begin{frame}{L'Algorithme Naïf Absolu} % =============================================
+    \begin{itemize}
+        \item Méthode la plus directe : évaluer de manière exhaustive toutes les paires possibles de textes clairs
+        \item Construction de la \textbf{Table de Distribution des Différences (DDT)} complète
+    \end{itemize}
+ 
+    \begin{block}{Principe}
+        Pour chaque $\alpha \in [1, 2^n - 1]$ et chaque $x \in [0, 2^n - 1]$ : \\
+        \begin{equation*}
+            \beta = F(x) \oplus F(x \oplus \alpha)
+        \end{equation*}
+        On incrémente la case $(\alpha, \beta)$ de la DDT. $\alpha = 0$ est exclu (trivial)
+    \end{block}
+
+    \footnotesize\[
+    \underbrace {
+    \bordermatrix{
+        & x_0 & x_1 & \cdots & x_{n-1} \cr
+        \alpha_0    & F(x_0) \oplus F(x_0 \oplus \alpha_0) & F(x_1) \oplus F(x_1 \oplus \alpha_0) & \cdots & F(x_{n-1}) \oplus F(x_{n-1} \oplus \alpha_0) \cr
+        \alpha_1    & F(x_0) \oplus F(x_0 \oplus \alpha_1) & F(x_1) \oplus F(x_1 \oplus \alpha_1) & \cdots & F(x_{n-1}) \oplus F(x_{n-1} \oplus \alpha_1) \cr
+        \vdots      & \vdots & \vdots & \ddots & \vdots \cr
+        \alpha_{n-1} & F(x_0) \oplus F(x_0 \oplus \alpha_{n-1}) & F(x_1) \oplus F(x_1 \oplus \alpha_{n-1}) & \cdots & F(x_{n-1}) \oplus F(x_{n-1} \oplus \alpha_{n-1}) \cr
+    }}_{\text{DDT}}
+    \]
+\end{frame}
+
+\begin{frame}{L'Algorithme Naïf Absolu} % =============================================
+    
+    \begin{block}{Complexité de l'algorithme brut}
+    \begin{itemize}
+        \item \textbf{Complexité en temps :} $\mathcal{O}(2^{2n})$
+        \item \textbf{Complexité en données :} $\mathcal{O}(2^n)$
+        \item \textbf{Complexité en mémoire :} $\mathcal{O}(2^{2n})$
+    \end{itemize}
+    \end{block}
+
+    \begin{alertblock}{}
+        Problème : Inutilisable en temps raisonnable dès que $n > 16$ 
+    \end{alertblock}
+    
+    \textbf{Trois optimisations majeures (C++) :}
+    \begin{itemize}
+        \item \textbf{Pré-calcul des chiffrés :} Stocker $F(x)$ dans une table $T$, puis $\beta = T[x] \oplus T[x \oplus \alpha]$ (deux accès mémoire au lieu de deux chiffrements)
+        \item \textbf{Filtrage à la volée (pDDT) :} Ne sauvegarder que les différentielles dépassant un seuil de probabilité $p$, évitant le stockage en $\mathcal{O}(2^{2n})$
+        \item \textbf{Parallélisation (OpenMP) :} Distribution du parcours des $\alpha$ sur les différents cœurs du processeur
+    \end{itemize}
+
+\end{frame}
+
+ 
+\begin{frame}{L'Algorithme Naïf Absolu — Limites matérielles} % =============================================
+    \textbf{Le « mur de la RAM » sur Speck 32/64 ($n=32$) :}
+ 
+    \begin{block}{Saturation mémoire}
+        La table de pré-calcul nécessite théoriquement $\mathbf{34{,}36}$ Go de RAM \\
+        $\Rightarrow$ Dépassement immédiat des 16 Go disponibles (\textit{Out-Of-Memory})
+    \end{block}
+ 
+    \textbf{Stratégies d'adaptation :}
+    \begin{itemize}
+        \item Suppression du pré-calcul $\Rightarrow$ chiffrement à la volée (lent)
+        \item Désactivation de la parallélisation $\Rightarrow$ moins d'allocations simultanées
+        \item Nettoyage mémoire à la volée $\Rightarrow$ affichage immédiat + purge
     \end{itemize}
 \end{frame}
 
+\subsection{Algorithme Standard}
+
+\begin{frame}{L'Algorithme Standard — Principe} % =============================================
+    \begin{itemize}
+        \item Transformation de la recherche déterministe en \textbf{échantillonnage statistique}
+        \item Pour chaque $\alpha$, on teste $k$ paires aléatoires au lieu de $2^n$
+        \item Complexité en temps $\Rightarrow$ $2^n \cdot p^{-1}$
+    \end{itemize}
+ 
+    \begin{block}{Modélisation statistique}
+        Le nombre de succès $X$ suit une loi de Poisson $\mathcal{P}(\lambda)$ avec $\lambda = k \times p$. \\[0.5em]
+        Les auteurs fixent $k = 4/p$ $\Rightarrow$ $\lambda = 4$ \\[0.5em]
+        \begin{equation*}
+            P(X \ge 2) = 1 - e^{-\lambda}(1+\lambda) \approx 0{,}9085
+        \end{equation*}
+        $\Rightarrow$ Seuil de confiance de $\sim 90\,\%$
+    \end{block}
+\end{frame}
+ 
+\begin{frame}{L'Algorithme Standard — Séparation signal/bruit} % =============================================
+ 
+    \textbf{Critère de détection :} $count \ge 2$
+ 
+    \begin{exampleblock}{Signal (vraie différentielle, probabilité $p$)}
+        $\lambda = k \times p = 4$ $\Rightarrow$ $P(X \ge 2) \approx 90\,\%$
+    \end{exampleblock}
+ 
+    \begin{alertblock}{Bruit (permutation aléatoire, $p_{rand} = \frac{1}{2^n - 1}$)}
+        Pour Speck 64 ($n=64$, $p=2^{-13}$) : $\lambda_{rand} \approx 2^{-49}$ \\[0.5em]
+        Par développement de Taylor : $P(X \ge 2) \approx \frac{\lambda^2}{2} \approx 2^{-99}$ \\[0.5em]
+        $\Rightarrow$ Collision accidentelle statistiquement impossible
+    \end{alertblock}
+\end{frame}
+ 
+\begin{frame}{L'Algorithme Standard — Limites} % =============================================
+ 
+    \begin{block}{Complexité}
+        Reste limité par le facteur $2^n$ : il faut itérer sur toutes les différences $\alpha$ possibles.
+    \end{block}
+ 
+    \begin{itemize}
+        \item Pour Speck 64/128 : $2^{64}$ itérations $\Rightarrow$ inabordable par un ordi personnel
+        \item Nécessité de \textbf{briser la barrière du $2^n$}
+    \end{itemize}
+ 
+    \begin{block}{}
+        Solution : exploiter le \textbf{paradoxe des anniversaires} pour convertir la recherche en une recherche de \textbf{collisions} $\Rightarrow$ complexité en $2^{n/2} \cdot p^{-1}$
+    \end{block}
+\end{frame}
 % =========================================================
 % PARTIE 2 : ALEXANDRE FRANÇOIS
 % =========================================================
