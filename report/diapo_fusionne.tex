@@ -1,0 +1,283 @@
+\documentclass[10pt]{beamer}
+
+% --- PACKAGES DE BASE ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{booktabs} 
+\usepackage{graphicx}
+
+% --- TYPOGRAPHIE OFFICIELLE ---
+\usepackage[default]{opensans} 
+
+% --- COULEURS OFFICIELLES ---
+\definecolor{UPSPrune}{RGB}{99, 0, 60} 
+\definecolor{UPSGrisFonce}{RGB}{49, 62, 72} 
+\definecolor{UPSGrisClair}{RGB}{213, 218, 223} 
+
+% --- THÈME ET COULEURS BEAMER ---
+\usetheme{Madrid}
+\usecolortheme{whale}
+
+% Application de la couleur Prune aux éléments de structure
+\setbeamercolor{structure}{fg=UPSPrune}
+\setbeamercolor{palette primary}{bg=UPSPrune, fg=white}
+\setbeamercolor{palette secondary}{bg=UPSPrune!85, fg=white}
+\setbeamercolor{palette tertiary}{bg=UPSPrune!70, fg=white}
+
+% Personnalisation des blocs selon la palette secondaire
+\setbeamercolor{block title}{bg=UPSPrune, fg=white}
+\setbeamercolor{block body}{bg=UPSGrisClair!30, fg=black}
+
+% --- INFOS DOCUMENT ---
+\title[Détection de propriétés statistiques]{Détection efficace de propriétés statistiques de chiffrements symétriques}
+\subtitle{TER - Master 1 SeCReTS}
+\author[François, Dupré, Guibert]{Alexandre FRANÇOIS \and Binet DUPRÉ \and Bastien GUIBERT}
+
+\institute[UPSaclay]{
+    \vfill
+    \includegraphics[width=4cm]{figures/Logotype UPSaclay_RVB.png}
+}
+\date[Avril 2026]{17 Avril 2026}
+
+% --- LOGO DE COIN ---
+\logo{\includegraphics[width=1cm]{figures/Logotype UPSaclay_RVB.png}}
+
+\begin{document}
+
+% --- PAGE DE TITRE ---
+\begin{frame}
+    \titlepage
+\end{frame}
+
+% --- SOMMAIRE ---
+\begin{frame}{Sommaire}
+    \tableofcontents
+\end{frame}
+
+% =========================================================
+% PARTIE 1 : BINET DUPRÉ
+% =========================================================
+\section{Titre de la section 1}
+
+\begin{frame}{Titre de la section 1}
+    \begin{block}{Exemple de bloc}
+        Police Open Sans
+    \end{block}
+    \begin{itemize}
+        \item Point 1.
+        \item Point 2.
+    \end{itemize}
+\end{frame}
+
+% =========================================================
+% PARTIE 2 : ALEXANDRE FRANÇOIS
+% =========================================================
+\section{Titre de la section 2}
+\begin{frame}{Titre de la section 2}
+    % Contenu...
+\end{frame}
+
+% =========================================================
+% PARTIE 3 : BASTIEN GUIBERT
+% =========================================================
+\section{Introduction}
+
+\begin{frame}{1. Objectifs de l'étude}
+
+\begin{enumerate}
+    \item Modéliser le coût d'une cryptanalyse différentielle exhaustive
+    \item Étudier l'effet des S-Box sur un Feistel
+    \item Rechercher des clés faibles
+\end{enumerate}
+
+\vspace{0.4cm}
+
+\begin{block}{Question centrale}
+Une S-Box performante localement améliore-t-elle forcément le chiffrement global ?
+\end{block}
+
+\end{frame}
+
+% =====================================================
+\section{Méthodologie}
+
+\begin{frame}{2. Structure du Feistel utilisé}
+
+Bloc de 12 bits séparé en deux moitiés de 6 bits.
+
+\vspace{0.3cm}
+
+À chaque round :
+
+\[
+L_{i+1}=R_i
+\]
+
+\[
+R_{i+1}=L_i \oplus F(R_i,K_i)
+\]
+
+avec :
+
+\[
+F(R_i,K_i)=SBox(R_i \oplus K_i)
+\]
+
+\vspace{0.3cm}
+
+\begin{itemize}
+    \item $K_i$ : sous-clé dérivée de $K$
+    \item S-Box bijective $6 \rightarrow 6$
+\end{itemize}
+
+\end{frame}
+
+% =====================================================
+
+\begin{frame}{3. Optimisation par Hill Climbing}
+
+Principe :
+
+\begin{enumerate}
+    \item Génération d'une S-Box aléatoire
+    \item Échange de deux valeurs
+    \item Évaluation du score
+    \item Conservation si amélioration
+    \item Répétition sur plusieurs milliers d'itérations
+\end{enumerate}
+
+\vspace{0.4cm}
+
+
+\end{frame}
+
+% =====================================================
+\section{Résultats}
+
+% =====================================================
+% REMPLACER LA SLIDE 4 PAR CELLE-CI
+% (dans ton document actuel)
+% =====================================================
+
+\begin{frame}{4. Temps d'exécution observé}
+
+Nombre de couples testés :
+
+\[
+2^n \times 2^n = 2^{2n}
+\]
+
+Donc :
+
+\[
+O(2^{2n})
+\]
+
+\vspace{0.2cm}
+
+\begin{center}
+\includegraphics[width=0.88\textwidth]{runtime_regression_plots.png}
+\end{center}
+
+\vspace{-0.2cm}
+
+\end{frame}
+
+% =====================================================
+
+\begin{frame}{5. Comparaison de deux S-Box}
+
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+Critère & Base & Optimisée \\
+\midrule
+max(DP) & 0.2500 & 0.0938 \\
+min NL & 15 & 24 \\
+Avalanche & 0.743 & 0.969 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.4cm}
+
+\begin{block}{Observation}
+La S-Box optimisée domine sur tous les critères locaux.
+\end{block}
+
+\end{frame}
+
+% =====================================================
+
+\begin{frame}{6. Impact global dans Feistel}
+
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+Version & Best DP & Avg Top-5 \\
+\midrule
+Classique & 0.003418 & 0.001271 \\
+Modifiée & 0.003906 & 0.003711 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.4cm}
+
+\begin{alertblock}{Résultat important}
+Une meilleure S-Box locale n'améliore pas forcément le chiffrement complet.
+\end{alertblock}
+
+\end{frame}
+
+% =====================================================
+
+\begin{frame}{7. Optimisation guidée par le chiffrement}
+
+Objectif : optimiser selon les performances du Feistel.
+
+\vspace{0.4cm}
+
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+Méthode & Best DP & Avg Top-5 \\
+\midrule
+Initiale & 0.003418 & 0.001271 \\
+In-cipher & 0.001413 & 0.000842 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.4cm}
+
+\begin{block}{Conclusion}
+L'optimisation globale produit une amélioration réelle.
+\end{block}
+
+\end{frame}
+
+% =====================================================
+\section{Conclusion}
+
+\begin{frame}{8. Conclusion}
+
+\begin{enumerate}
+    \item La complexité suit bien une loi exponentielle
+    \item Une bonne S-Box locale ne suffit pas
+    \item Optimiser le système complet est plus efficace
+    \item Aucune clé faible détectée sur 4096 clés
+\end{enumerate}
+
+\vspace{0.5cm}
+
+\begin{block}{Message final}
+Un composant cryptographique doit être évalué dans son architecture globale.
+\end{block}
+
+\end{frame}
+
+% =====================================================
+
+\end{document}
