@@ -264,7 +264,7 @@ Le pseudo-code suivant résume l’algorithme tel qu’il a été implémenté e
 \State $limit \gets 2^n$
 \State $k \gets 4 / p$ \Comment{Nombre de paires aléatoires à évaluer par $\alpha$}
 \State $expectedHits \gets k \times p$
-\State $minThreshold \gets \max(3, \frac{expectedHits}{2})$ \Comment{Calcul dynamique du seuil de filtrage}
+\State $minThreshold \gets \frac{expectedHits}{2}$ \Comment{Calcul dynamique du seuil de filtrage}
 \State Initialiser une liste globale $resultats$
 \State \textit{// Boucle parallélisée (répartition sur les cœurs du processeur)}
 \For{$\alpha \gets 1$ \textbf{to} $limit - 1$}
@@ -502,14 +502,13 @@ De plus, plus la probabilité $p$ recherchée est faible, plus le temps d'exécu
 
 \section{L'algorithme de compromis temps/mémoire (tradeoff)}
 
-Pour surmonter ce dilemme, les auteurs proposent en annexe de leur article d'exploiter la mémoire disponible (notée $S$) de façon stratégique pour concevoir des algorithmes de compromis (\textit{Tradeoffs}). Ils décrivent plus précisément deux variantes distinctes, adaptées à différentes capacités matérielles :
+Pour surmonter l'impasse spatiale de l'algorithme fondamental, les auteurs proposent en annexe de leur article d'exploiter la mémoire physique disponible (notée $S$) comme variable d'ajustement. Ils décrivent deux algorithmes de compromis (\textit{Tradeoffs}) : le premier est destiné aux environnements à mémoire restreinte (au prix d'une perte de temps), et le second est conçu pour des capacités de mémoire modérées.
 
-\begin{itemize}
-    \item \textbf{Le Premier Compromis (Faible mémoire) :} Il s'agit d'une extension de l'algorithme dit « sans mémoire ». Conçu pour des environnements où l'espace $S$ est extrêmement restreint, il trouve un petit nombre de collisions et les teste toutes de manière systématique. Cette phase de vérification exhaustive alourdit considérablement la complexité temporelle (ajoutant un terme en $\tilde{\mathcal{O}}(p^{-3})$), le rendant sous-optimal sur des machines classiques.
-    \item \textbf{Le Second Compromis (Mémoire modérée) :} Il s'agit d'une extension de l'algorithme fondamental. Conçu pour des valeurs de $S$ plus larges, il élimine la coûteuse phase de test systématique en cherchant directement des collisions multiples pour filtrer le bruit en amont.
-\end{itemize}
+Dans le cadre de ce projet, nos machines de test disposant d'une quantité de mémoire vive suffisante (16 Go), nous ne sommes pas dans un scénario de mémoire critique. Nous nous sommes donc focalisés sur le \textbf{Second Algorithme de Compromis} (\textit{Tradeoff algorithm 2}), dont l'objectif théorique est de conserver la complexité temporelle optimale en $\tilde{\mathcal{O}}(2^{n/2} p^{-1})$ tout en plafonnant l'utilisation de la RAM à un espace fixe dimensionné à $\tilde{\mathcal{O}}(p^{-2})$.
 
-Dans le cadre de ce projet, les ordinateurs modernes standards disposant généralement d'une quantité de mémoire vive confortable (de 8 à 16 Go de RAM), nous ne sommes pas dans un scénario de mémoire critique absolue. Nous nous sommes donc naturellement penchés sur le \textbf{Second Algorithme de Compromis} (\textit{Tradeoff algorithm 2}). Cette approche permet de conserver la vitesse d'exécution optimale en $\tilde{\mathcal{O}}(2^{n/2} p^{-1})$ tout en plafonnant intelligemment l'utilisation de la mémoire à un espace fixe dimensionné à $\tilde{\mathcal{O}}(p^{-2})$.
+Cependant, notre démarche s'écarte ici de l'implémentation stricte suggérée par la littérature. Alors que Dinur \textit{et al.} fondent ce compromis sur l'algorithme théorique de recherche de collisions parallèles (PCS), nous avons fait le choix technique de ne pas employer cette méthode, jugée inadaptée à notre architecture matérielle. À la place, nous avons conçu une implémentation alternative reposant sur un mécanisme de \textbf{génération par lots successifs (batching)} couplé à un tri en mémoire. 
+
+Cette section détaillera dans un premier temps le modèle probabiliste justifiant la viabilité mathématique de ce compromis par lots, avant d'exposer les choix d'ingénierie (gestion de la RAM, effet $K^2$, filtre de fréquence) qui nous ont permis de le concrétiser en C++.
 
 \subsection{Principe théorique : l'approche probabiliste par lots (batching)}
 
@@ -519,12 +518,12 @@ D'un point de vue fonctionnel, il suffit de retenir que la méthode PCS permet d
 
 La question centrale devient alors de déterminer combien de lots successifs de taille $S$ doivent être générés pour détecter les différentielles à haute probabilité ciblées. Pour y répondre, il faut analyser les probabilités au sein d'un seul lot et évaluer ses chances de succès.
 
-Une vraie différentielle produit un « quadruplet correct » (une collision utile) avec une probabilité de $p^2$. Dans un lot contenant $S$ collisions quelconques, l'espérance de trouver une collision liée à l'une de ces différentielles réelles est donc de $S \cdot p^2$. Cependant, pour éviter les faux positifs, l'algorithme exige de trouver au moins deux collisions au sein du même lot suggérant exactement la même différence d'entrée-sortie $(\alpha, \beta)$. En probabilités, lorsque l'espérance d'un événement rare est $\lambda = S \cdot p^2$, la probabilité que cet événement se produise au moins deux fois est proportionnelle à $\lambda^2$. La probabilité de succès pour un lot entier est donc d'environ :
+Une vraie différentielle produit un « quadruplet correct » (une collision utile) avec une probabilité de $p^2$. Dans un lot contenant $S$ collisions quelconques, l'espérance de trouver une collision liée à l'une de ces différentielles réelles est donc de $S \cdot p^2$. Cependant, pour éviter les faux positifs, l'algorithme exige de trouver au moins deux collisions au sein du même lot suggérant exactement la même différence d'entrée-sortie $(\alpha, \beta)$. En probabilités, lorsque l'espérance d'un événement rare est $\lambda = S \cdot p^2$, la probabilité que cet événement se produise au moins deux fois est de l'ordre de $\lambda^2 / 2$. En négligeant la constante, la probabilité de succès pour un lot entier s'évalue donc à :
 \begin{equation*}
-    P(\text{succès d'un lot}) \approx (S \cdot p^2)^2 = S^2 \cdot p^4
+    P(\text{succès d'un lot}) \propto (S \cdot p^2)^2 = S^2 \cdot p^4
 \end{equation*}
 
-Puisque la probabilité d'obtenir ce résultat avec un seul lot est de $S^2 \cdot p^4$, il faudra, en moyenne, répéter la recherche avec de nouvelles saveurs $\gamma$ un nombre de fois équivalent à l'inverse de cette probabilité. Le nombre de lots nécessaires est donc de $S^{-2} \cdot p^{-4}$.
+Puisque la probabilité d'obtenir ce résultat avec un seul lot est de $S^2 \cdot p^4$, il faudra, en moyenne, répéter la recherche avec de nouvelles saveurs $\gamma$ un nombre de fois équivalent à l'inverse de cette proportion. Le nombre de lots nécessaires est donc de $S^{-2} \cdot p^{-4}$.
 
 La complexité temporelle globale théorique s'obtient en multipliant le temps passé à générer un lot par le nombre de lots itérés :
 \begin{equation*}
@@ -545,16 +544,16 @@ Bien que l'algorithme PCS soit optimal d'un point de vue asymptotique, il a ét�
 Dans le cadre de ce projet, nos machines de test disposaient d'une mémoire vive modérée (plusieurs gigaoctets). Il n'était donc ni nécessaire ni pertinent de s'imposer la rigueur spatiale du PCS. Nous avons fait le choix assumé d'allouer une empreinte mémoire légèrement supérieure pour bénéficier d'une architecture beaucoup plus simple et rapide en C++ (fonction \texttt{run\allowbreak Memory\allowbreak Efficient\allowbreak Algorithm}). Plutôt que d'utiliser les chaînes de points distingués, nous avons implémenté une \textbf{recherche par lots restreints (batching) couplée à un tri en mémoire}.
 
 \paragraph{Le réglage empirique de la RAM ($M_{MAX}$) :}
-Le premier défi fut de calibrer la limite stricte de RAM autorisée. Lors de nos tests, nous avons constaté qu'au-delà d'une allocation de 2,3 Go (soit environ 100 millions d'entrées), le système d'exploitation commençait à utiliser la mémoire virtuelle sur le disque dur (\textit{swap}). Ce mécanisme ralentissait l'exécution de manière si drastique que le gain théorique de l'algorithme était annulé. L'algorithme plafonne donc dynamiquement la taille d'un lot à cette valeur $M_{MAX}$.
+Le premier défi fut de calibrer la limite stricte de RAM autorisée. Lors de nos tests, nous avons constaté qu'au-delà d'une allocation de 2,3 Go (soit environ 100 millions d'entrées), le système d'exploitation commençait à utiliser la mémoire virtuelle sur le disque dur (\textit{swap}). Ce mécanisme ralentissait l'exécution que le gain théorique de l'algorithme était annulé. L'algorithme plafonne donc dynamiquement la taille d'un lot à cette valeur $M_{MAX}$.
 
 \paragraph{L'évaluation et le tri des lots :}
 Pour un substitut $\gamma$ donné, le programme remplit le tableau alloué avec des évaluations aléatoires de $g_{\gamma}$. Au lieu d'utiliser une structure de hachage, le tableau est trié en place. Par conséquent, toutes les collisions se retrouvent mécaniquement adjacentes. Un unique parcours linéaire du tableau permet alors de les identifier et d'en extraire les candidats. Cette approche s'avère très économe en espace et extrêmement rapide, car le tri en mémoire contiguë maximise l'utilisation du cache du processeur.
 
-\paragraph{La compensation mathématique (l'effet $K^2$) :}
-D'après le paradoxe des anniversaires, le nombre de paires formées évolue de manière quadratique. Diviser la taille du tableau idéal d'un facteur $K$ (pour respecter $M_{MAX}$) fait donc chuter le nombre de collisions générées par lot d'un facteur $K^2$. Pour compenser cette perte statistique et conserver le même taux de détection global, le programme tire une nouvelle saveur $\gamma$ aléatoire à chaque itération et exécute rigoureusement $K^2$ lots indépendants. Plus la mémoire allouée est faible, plus le temps d'exécution augmente quadratiquement.
+\paragraph{La compensation mathématique (Batching vs PCS) :}
+C'est ici qu'apparaît la différence mathématique majeure entre le modèle théorique PCS et notre implémentation pratique. Dans le modèle PCS, la réduction de la mémoire d'un facteur $K$ entraîne une dégradation temporelle proportionnelle à $K^{1,5}$ (issue de la complexité en $S^{-3/2}$). Dans notre architecture par lots (tableaux), la mécanique obéit au paradoxe des anniversaires classique : le nombre de paires évaluées au sein d'un lot de taille $M$ évolue de manière quadratique (environ $M^2/2$). Par conséquent, diviser l'espace RAM alloué d'un facteur $K$ (pour respecter $M_{MAX}$) fait chuter le nombre de collisions générées par lot d'un facteur exact de $K^2$. Pour compenser cette perte statistique et conserver le même taux de détection global via le filtre de fréquence, le programme doit générer rigoureusement $K^2$ lots indépendants avec de nouvelles saveurs $\gamma$.
 
 \paragraph{Le filtre de fréquence global :}
-La fragmentation de la recherche impose de compter les apparitions d'un candidat $(\alpha, \beta)$ à travers les différents lots, sans recréer un goulot d'étranglement mémoire. Notre implémentation utilise un \textbf{filtre de fréquence} (\textit{Frequency Filter}) pré-alloué de taille fixe (1 Go). Lorsqu'une collision suggère une clé, celle-ci est hachée et indexée dans ce grand tableau d'octets pour incrémenter un compteur. Ce n'est que si cette case franchit le seuil d'acceptation fondamental ($n/4$) que la véritable clé est allouée dans une liste restreinte pour être soumise à la vérification finale.
+La fragmentation de la recherche impose de compter les apparitions d'un candidat $(\alpha, \beta)$ à travers les différents lots, sans recréer un goulot d'étranglement mémoire. Notre implémentation utilise un \textbf{filtre de fréquence} pré-alloué de taille fixe (1 Go). Lorsqu'une collision suggère une clé, celle-ci est hachée et modulo-indexée dans ce grand tableau d'octets pour incrémenter un compteur. Ce n'est que si cette case franchit le seuil d'acceptation fondamental ($n/4$) que la véritable clé est allouée dans une liste restreinte pour être soumise à la vérification finale.
 
 \paragraph{Validation expérimentale :}
 Pour démontrer l'impact de ce compromis, nous avons mené une campagne de tests sur Speck 32/64 ($p=2^{-9}$), dont l'échantillon idéal nécessite environ 5,6 Go de RAM. Nous avons artificiellement restreint la limite mémoire allouée à notre algorithme pour observer son comportement (Figure~\ref{fig:tradeoff_curve}).
@@ -562,13 +561,13 @@ Pour démontrer l'impact de ce compromis, nous avons mené une campagne de tests
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.85\textwidth]{figures/tradeoff_curve.png}
-    \caption{Courbe du compromis Temps-Mémoire sur Speck 32/64. La réduction de la RAM disponible contraint l'algorithme à multiplier les lots d'évaluation, entraînant une hausse quadratique du temps d'exécution (effet $K^2$).}
+    \caption{Courbe du compromis Temps-Mémoire sur Speck 32/64. La réduction de la RAM disponible contraint l'algorithme à multiplier les lots d'évaluation, entraînant une hausse du temps d'exécution.}
     \label{fig:tradeoff_curve}
 \end{figure}
 
 Les résultats empiriques confirment parfaitement le modèle mathématique. En réduisant l'empreinte mémoire d'un facteur 4,5 (passant de 5,6 Go à 1,25 Go), le temps d'exécution passe de 21 secondes à plus de 274 secondes, et le nombre de lots nécessaires augmente de 1 à 361. L'algorithme de compromis offre ainsi une adaptabilité matérielle au prix d'un allongement prévisible du calcul.
 
-\section{Ouverture : La dépendance aux hypothèses}
+\subsection{Ouverture : La dépendance aux hypothèses}
 
 Grâce à cet algorithme de compromis, la détection de différentielles à haute probabilité devient réalisable sur du matériel standard, franchissant définitivement la barrière de la recherche exhaustive en $2^n$. 
 
