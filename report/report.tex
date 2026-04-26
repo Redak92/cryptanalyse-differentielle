@@ -523,7 +523,7 @@ Une vraie différentielle produit un « quadruplet correct » (une collision uti
     P(\text{succès d'un lot}) \propto (S \cdot p^2)^2 = S^2 \cdot p^4
 \end{equation*}
 
-Puisque la probabilité d'obtenir ce résultat avec un seul lot est de $S^2 \cdot p^4$, il faudra, en moyenne, répéter la recherche avec de nouvelles saveurs $\gamma$ un nombre de fois équivalent à l'inverse de cette proportion. Le nombre de lots nécessaires est donc de $S^{-2} \cdot p^{-4}$.
+Puisque la probabilité d'obtenir ce résultat avec un seul lot évolue en $S^2 \cdot p^4$, il faudra, en moyenne, répéter la recherche avec de nouvelles saveurs $\gamma$ un nombre de fois équivalent à l'inverse de cette proportion. Le nombre de lots nécessaires est donc de l'ordre de $S^{-2} \cdot p^{-4}$.
 
 La complexité temporelle globale théorique s'obtient en multipliant le temps passé à générer un lot par le nombre de lots itérés :
 \begin{equation*}
@@ -550,7 +550,7 @@ Le premier défi fut de calibrer la limite stricte de RAM autorisée. Lors de no
 Pour un substitut $\gamma$ donné, le programme remplit le tableau alloué avec des évaluations aléatoires de $g_{\gamma}$. Au lieu d'utiliser une structure de hachage, le tableau est trié en place. Par conséquent, toutes les collisions se retrouvent mécaniquement adjacentes. Un unique parcours linéaire du tableau permet alors de les identifier et d'en extraire les candidats. Cette approche s'avère très économe en espace et extrêmement rapide, car le tri en mémoire contiguë maximise l'utilisation du cache du processeur.
 
 \paragraph{La compensation mathématique (Batching vs PCS) :}
-C'est ici qu'apparaît la différence mathématique majeure entre le modèle théorique PCS et notre implémentation pratique. Dans le modèle PCS, la réduction de la mémoire d'un facteur $K$ entraîne une dégradation temporelle proportionnelle à $K^{1,5}$ (issue de la complexité en $S^{-3/2}$). Dans notre architecture par lots (tableaux), la mécanique obéit au paradoxe des anniversaires classique : le nombre de paires évaluées au sein d'un lot de taille $M$ évolue de manière quadratique (environ $M^2/2$). Par conséquent, diviser l'espace RAM alloué d'un facteur $K$ (pour respecter $M_{MAX}$) fait chuter le nombre de collisions générées par lot d'un facteur exact de $K^2$. Pour compenser cette perte statistique et conserver le même taux de détection global via le filtre de fréquence, le programme doit générer rigoureusement $K^2$ lots indépendants avec de nouvelles saveurs $\gamma$.
+C'est ici qu'apparaît la différence mathématique majeure entre le modèle théorique PCS et notre implémentation pratique. Dans le modèle PCS, la réduction de la mémoire d'un facteur $K$ entraîne une dégradation temporelle proportionnelle à $K^{1,5}$ (issue de la complexité en $S^{-3/2}$). Dans notre architecture par lots (tableaux), la mécanique obéit au paradoxe des anniversaires classique : le nombre de paires évaluées au sein d'un lot de taille $M$ évolue de manière quadratique (environ $M^2/2$). Par conséquent, diviser l'espace RAM alloué d'un facteur $K$ (pour respecter $M_{MAX}$) fait chuter le nombre de collisions générées par lot d'un facteur exact de $K^2$. Pour compenser cette perte statistique et conserver le même taux de détection global via le filtre de fréquence, le programme doit générer $K^2$ lots indépendants avec de nouvelles saveurs $\gamma$. Le temps d'exécution global théorique, défini par le produit du temps de traitement d'un lot (proportionnel à la RAM allouée $M$) et du nombre de lots nécessaires (proportionnel à $1/M^2$), évolue donc selon la relation inverse $T \propto 1/M$.
 
 \paragraph{Le filtre de fréquence global :}
 La fragmentation de la recherche impose de compter les apparitions d'un candidat $(\alpha, \beta)$ à travers les différents lots, sans recréer un goulot d'étranglement mémoire. Notre implémentation utilise un \textbf{filtre de fréquence} pré-alloué de taille fixe (1 Go). Lorsqu'une collision suggère une clé, celle-ci est hachée et modulo-indexée dans ce grand tableau d'octets pour incrémenter un compteur. Ce n'est que si cette case franchit le seuil d'acceptation fondamental ($n/4$) que la véritable clé est allouée dans une liste restreinte pour être soumise à la vérification finale.
@@ -560,12 +560,12 @@ Pour démontrer l'impact de ce compromis, nous avons mené une campagne de tests
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.85\textwidth]{figures/tradeoff_curve.png}
-    \caption{Courbe du compromis Temps-Mémoire sur Speck 32/64. La réduction de la RAM disponible contraint l'algorithme à multiplier les lots d'évaluation, entraînant une hausse du temps d'exécution.}
+    \includegraphics[width=0.85\textwidth]{figures/tradeoff_theorie_vs_realite.png}
+    \caption{Courbe du compromis Temps-Mémoire sur Speck 32/64. La superposition de la courbe théorique $(T \propto 1/M)$ et des mesures réelles met en évidence l'importante surcharge matérielle (zone rouge) générée par la fragmentation excessive en sous-lots.}
     \label{fig:tradeoff_curve}
 \end{figure}
 
-Les résultats empiriques confirment parfaitement le modèle mathématique. En réduisant l'empreinte mémoire d'un facteur 4,5 (passant de 5,6 Go à 1,25 Go), le temps d'exécution passe de 21 secondes à plus de 274 secondes, et le nombre de lots nécessaires augmente de 1 à 361. L'algorithme de compromis offre ainsi une adaptabilité matérielle au prix d'un allongement prévisible du calcul.
+L'analyse de ces résultats (Figure~\ref{fig:tradeoff_curve}) met en évidence un écart entre la théorie et la pratique. Si la courbe valide l'existence du compromis temps-mémoire, on observe que le temps mesuré s'éloigne de la courbe théorique idéale ($T \propto 1/M$) à mesure que la RAM diminue. À titre d'exemple, en réduisant l'empreinte mémoire d'un facteur 4,5 (de 5,6 Go à 1,25 Go), la théorie prédirait un allongement proportionnel du temps de calcul (soit environ 95 secondes). Or, le temps réel s'élève à 274 secondes. Cette zone de surcharge matérielle (en rouge) s'explique par l'augmentation quadratique du nombre de lots : passer de 1 à 361 lots accroît le temps d'initialisation des structures, limite l'efficacité de la mémoire cache du processeur et disperse le signal des collisions. L'algorithme offre donc une adaptabilité matérielle indispensable, mais s'accompagne d'un surcoût logiciel notable lorsque la contrainte spatiale devient trop stricte.
 
 \subsection{Ouverture : La dépendance aux hypothèses}
 
