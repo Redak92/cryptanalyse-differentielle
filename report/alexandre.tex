@@ -3,9 +3,9 @@
 % =========================================================
 \section{Efficacité algorithmique : l'approche par collisions}
 
-\begin{frame}{Optimisation du coût temporel : l'approche par collisions}
+\begin{frame}{Optimisation : l’approche par collisions}
     
-    \begin{block}{Réduction de la complexité ($n=64, p=2^{-13}$)}
+    \begin{block}{Réduction des complexités ($n=64, p=2^{-13}$)}
         \centering
         \renewcommand{\arraystretch}{1.3}
         \small
@@ -25,7 +25,7 @@
 
     \begin{itemize}
         \item \textbf{Principe de collision :} Trouver deux messages distincts $x$ et $x'$ produisant la même signature de sortie (sur une fonction dérivée $g_\gamma$).
-        \item \textbf{Paradoxe des anniversaires :} Réduction du coût temporel.
+        \item \textbf{Paradoxe des anniversaires :} Réduction conjointe de la complexité en temps et en espace.
     \end{itemize}
     
 \end{frame}
@@ -48,109 +48,7 @@
     \end{itemize}
 \end{frame}
 
-% --- DIAPO 3 : SCHÉMA GÉOMÉTRIQUE (TIKZ) ---
-\begin{frame}{Le mécanisme du quadruplet correct}
-    \centering
-    % On réduit un peu l'échelle globale pour que tout rentre parfaitement dans la slide
-    \begin{tikzpicture}[>=Stealth, scale=0.75, transform shape,
-        box/.style={draw, rectangle, minimum width=1.2cm, minimum height=0.8cm, font=\large, thick},
-        xor/.style={draw, circle, inner sep=1pt, minimum size=0.5cm, thick}
-    ]
-
-        % ==========================================
-        % ÉTAPE 1 : BLOC GAUCHE (Signature de x)
-        % ==========================================
-        \node (x) at (0,0) {$x$};
-        \node (xg) at (3,0) {$x \oplus \gamma$};
-
-        % Relation gamma (grise)
-        \draw[<->, thick, gray] (x) -- node[above] {$\gamma$} (xg);
-
-        % Chiffrements F
-        \node[box] (Fx) at (0,-2) {$F$};
-        \node[box] (Fxg) at (3,-2) {$F$};
-        \draw[->, thick] (x) -- (Fx);
-        \draw[->, thick] (xg) -- (Fxg);
-
-        % Sorties f
-        \node (fx) at (0,-4) {$F(x)$};
-        \node (fxg) at (3,-4) {$F(x \oplus \gamma)$};
-        \draw[->, thick] (Fx) -- (fx);
-        \draw[->, thick] (Fxg) -- (fxg);
-
-        % XOR et g_gamma
-        \node[xor] (xorL) at (1.5,-5.5) {$\oplus$};
-        \draw[->, thick] (fx) -- (xorL);
-        \draw[->, thick] (fxg) -- (xorL);
-
-        \node (gx) at (1.5,-6.5) {$g_{\gamma}(x)$};
-        \draw[->, thick] (xorL) -- (gx);
-
-        % Cadre logique gauche
-        \node[draw, UPSPrune!60, dashed, thick, rounded corners, fit=(x) (xg) (gx), inner sep=0.4cm] {};
-
-        % ==========================================
-        % ÉTAPE 2 : BLOC DROIT (Entrées) + ALPHA
-        % ==========================================
-        \onslide<2->{
-            \node (xa) at (7,0) {$x \oplus \alpha$};
-            \node (xag) at (10,0) {$x \oplus \alpha \oplus \gamma$};
-
-            % Relation gamma (grise)
-            \draw[<->, thick, gray] (xa) -- node[above] {$\gamma$} (xag);
-
-            % Chiffrements F
-            \node[box] (Fxa) at (7,-2) {$F$};
-            \node[box] (Fxag) at (10,-2) {$F$};
-            \draw[->, thick] (xa) -- (Fxa);
-            \draw[->, thick] (xag) -- (Fxag);
-
-            % Relations transversales Alpha (bleues)
-            \draw[<->, thick, blue!80!black] (x) to[bend left=20] node[above] {$\alpha$} (xa);
-            \draw[<->, thick, blue!80!black] (xg) to[bend right=20] node[below] {$\alpha$} (xag);
-        }
-
-        % ==========================================
-        % ÉTAPE 3 : Sorties droites + BETA + COLLISION
-        % ==========================================
-        \onslide<3->{
-            % Sorties f
-            \node (fxa) at (7,-4) {$F(x \oplus \alpha)$};
-            \node (fxag) at (10,-4) {$F(x \oplus \alpha \oplus \gamma)$};
-            \draw[->, thick] (Fxa) -- (fxa);
-            \draw[->, thick] (Fxag) -- (fxag);
-
-            % XOR et g_gamma
-            \node[xor] (xorR) at (8.5,-5.5) {$\oplus$};
-            \draw[->, thick] (fxa) -- (xorR);
-            \draw[->, thick] (fxag) -- (xorR);
-
-            \node (gxa) at (8.5,-6.5) {$g_{\gamma}(x \oplus \alpha)$};
-            \draw[->, thick] (xorR) -- (gxa);
-
-            % Cadre logique droit
-            \node[draw, UPSPrune!60, dashed, thick, rounded corners, fit=(xa) (xag) (gxa), inner sep=0.4cm] {};
-
-            % Relations transversales Beta (bleues)
-            \draw[<->, thick, blue!80!black] (fx) to[bend left=20] node[above] {$\beta$} (fxa);
-            \draw[<->, thick, blue!80!black] (fxg) to[bend right=20] node[below] {$\beta$} (fxag);
-
-            % Collision finale
-            \draw[<->, ultra thick, UPSPrune] (gx) -- node[above, font=\bfseries] {Collision} (gxa);
-        }
-
-    \end{tikzpicture}
-
-    \vspace{0.2cm}
-
-    \begin{itemize}
-        \item<1-> \textbf{Signature :} $g_\gamma(x)$ capture la différence de sortie induite par $\gamma$.
-        \item<2-> \textbf{Parallélisme :} Si $(x, x\oplus\alpha)$ est un couple correct ($\beta$), alors $(x\oplus\gamma, x\oplus\alpha\oplus\gamma)$ l'est aussi avec probabilité $p$.
-        \item<3-> \textbf{Collision :} Par linéarité du XOR, les deux $\beta$ s'annulent : la collision est détectée.
-    \end{itemize}
-\end{frame}
-
-% --- DIAPO 4 : PREUVE ALGÉBRIQUE ---
+% --- DIAPO 3 : PREUVE ALGÉBRIQUE ---
 \begin{frame}{Preuve algébrique de la collision}
     \begin{block}{Double différenciation}
         En calculant le XOR des deux signatures, on réorganise les termes :
@@ -170,28 +68,49 @@
     \end{itemize}
 \end{frame}
 
-% --- DIAPO 5 : EXEMPLE NUMÉRIQUE ---
-\begin{frame}{Exemple numérique (Blocs de 4 bits)}
-    \begin{columns}
-        \begin{column}{0.5\textwidth}
-            \textbf{Phase de sondage :}
-            \begin{itemize}
-                \item Fixons $\gamma = 0x1$
-                \item $x_1 = \mathbf{0x2} \to g_\gamma(2) = \mathbf{0x5}$
-                \item $x_2 = \mathbf{0xA} \to g_\gamma(A) = \mathbf{0x5}$
-            \end{itemize}
-            \vspace{0.2cm}
-            $\Rightarrow$ Une collision est détectée.
-        \end{column}
-        \begin{column}{0.5\textwidth}
-            \begin{block}{Résultat}
-                La direction candidate est :
-                \[ \alpha = x_1 \oplus x_2 = 2 \oplus A = \mathbf{0x8} \]
-            \end{block}
-            \begin{itemize}
-                \item On a identifié $\alpha=8$ sans tester les 15 autres possibilités.
-                \item On vérifie ensuite la probabilité de $0x8 \to \beta$.
-            \end{itemize}
-        \end{column}
-    \end{columns}
+% --- DIAPO 4 : DÉTECTION (MÉCANIQUE) ---
+\begin{frame}{Phase de détection : la mécanique}
+    
+    \begin{block}{Changement de paradigme}
+        \begin{itemize}
+            \item \textbf{Approche naïve :} Itération sur les $2^n$ valeurs de $\alpha$.
+            \item \textbf{Par collisions :} Traitement global sur un échantillon de $M$ messages.
+        \end{itemize}
+    \end{block}
+
+    \vspace{0.4cm}
+    \textbf{Algorithme en 3 étapes clés :}
+    \vspace{0.2cm}
+
+    \begin{enumerate}
+        \item \textbf{Générer :} Calculer les signatures $g_\gamma(x)$ pour $M$ messages.
+        \item \textbf{Hacher :} Détecter les doublons ($g_\gamma(x) = g_\gamma(x')$).
+        \item \textbf{Déduire :} Isoler les candidats $\alpha = x \oplus x'$.
+    \end{enumerate}
+
+\end{frame}
+
+% --- DIAPO 5 : DIMENSIONNEMENT ET VÉRIFICATION ---
+\begin{frame}{Dimensionnement par le paradoxe des anniversaires}
+
+    \begin{block}{Espérance des collisions utiles}
+        Pour un échantillon de taille $M$ :
+        \[ E[\text{Collisions}] = \frac{M^2}{2} \cdot 2^{-n} \cdot p^2 \]
+    \end{block}
+
+    \begin{itemize}
+        \item $\mathbf{2^{-n}}$ : Probabilité d'obtenir la différence ciblée $\alpha$.
+        \item $\mathbf{p^2}$ : Probabilité d'obtenir un quadruplet correct.
+    \end{itemize}
+
+    \vspace{0.2cm}
+
+    \begin{block}{Taille optimale}
+        Pour garantir la détection ($E \ge 1$), l'échantillon requis s'effondre à :
+        \[ \mathbf{M \approx 2^{n/2} \cdot p^{-1}} \]
+    \end{block}
+
+    \vspace{0.2cm}
+    \textit{\small $\rightarrow$ Un test de vérification classique élimine ensuite les éventuels faux positifs.}
+
 \end{frame}
