@@ -79,7 +79,7 @@
     \end{block}
 
     \vspace{0.4cm}
-    \textbf{Algorithme en 3 étapes clés :}
+    \textbf{Détection en 3 étapes clés :}
     \vspace{0.2cm}
 
     \begin{enumerate}
@@ -112,5 +112,53 @@
 
     \vspace{0.2cm}
     \textit{\small $\rightarrow$ Un test de vérification classique élimine ensuite les éventuels faux positifs.}
+
+\end{frame}
+
+% --- DIAPO 6 : LA CONTRAINTE SPATIALE ---
+\begin{frame}{Le goulet d'étranglement spatial}
+
+    \begin{block}{Le coût de la table de hachage}
+        L'algorithme requiert le stockage simultané de $M$ entrées pour identifier les collisions.
+    \end{block}
+
+    \vspace{0.4cm}
+    \textbf{Exemple critique : $n=32$ et $p=2^{-16}$}
+    \vspace{0.2cm}
+
+    \begin{itemize}
+        \item \textbf{Taille de l'échantillon :} $M \approx 2^{n/2} \cdot p^{-1} = 2^{16} \cdot 2^{16} = 2^{32}$ éléments.
+        \item \textbf{Empreinte unitaire :} Message $x$ (32 bits) + Signature (32 bits) = 64 bits (8 octets).
+        \item \textbf{Consommation RAM :} $2^{32} \text{ entrées} \times 8 \text{ octets} = \mathbf{32 \text{ Go}}$.
+    \end{itemize}
+
+    \vspace{0.4cm}
+    \textit{\small $\rightarrow$ Cette exigence en espace excède la capacité de la plupart des stations de travail.}
+
+\end{frame}
+
+% --- DIAPO 7 : COMPROMIS TEMPS-MÉMOIRE ---
+\begin{frame}{Gestion de la mémoire : Traitement par lots}
+
+    \begin{block}{Le choix d'implémentation}
+        \begin{itemize}
+            \item \textbf{Théorie :} Algorithmes complexes (\textit{Parallel Collision Search}) pour mémoire très restreinte.
+            \item \textbf{Pratique :} Station à 16 Go de RAM $\rightarrow$ Surcomplexité inutile.
+        \end{itemize}
+    \end{block}
+
+    \vspace{0.4cm}
+    \textbf{Solution : Traitement par lots (\textit{Batching})}
+    \vspace{0.2cm}
+
+    \begin{enumerate}
+        \item \textbf{Segmentation :} Découpage de l'espace de recherche en sous-ensembles adaptés à la RAM.
+        \item \textbf{Traitement du lot :} 
+        \begin{itemize}
+            \item Génération et hachage.
+            \item Extraction et comptage des candidats $\alpha$.
+        \end{itemize}
+        \item \textbf{Purge et Itération :} Libération totale de la mémoire, puis chargement du lot suivant.
+    \end{enumerate}
 
 \end{frame}
