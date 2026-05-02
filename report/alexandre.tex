@@ -69,23 +69,24 @@
 \end{frame}
 
 % --- DIAPO 4 : DÉTECTION (MÉCANIQUE) ---
-\begin{frame}{Phase de détection : la mécanique}
+\begin{frame}{Phase de détection : implémentation pratique}
     
     \begin{block}{Changement de paradigme}
         \begin{itemize}
-            \item \textbf{Approche naïve :} Itération sur les $2^n$ valeurs de $\alpha$.
-            \item \textbf{Par collisions :} Traitement global sur un échantillon de $M$ messages.
+            \item \textbf{Approche naïve :} Itération exhaustive sur les $2^n$ valeurs de $\alpha$.
+            \item \textbf{Par collisions :} Itération ciblée sur un échantillon de $M$ messages.
         \end{itemize}
     \end{block}
 
     \vspace{0.4cm}
-    \textbf{Détection en 3 étapes clés :}
+    \textbf{Mécanique de l'algorithme en 4 étapes :}
     \vspace{0.2cm}
 
     \begin{enumerate}
-        \item \textbf{Générer :} Calculer les signatures $g_\gamma(x)$ pour $M$ messages.
-        \item \textbf{Hacher :} Détecter les doublons ($g_\gamma(x) = g_\gamma(x')$).
-        \item \textbf{Déduire :} Isoler les candidats $\alpha = x \oplus x'$.
+        \item \textbf{Génération :} Tirage de $M$ messages et calcul des signatures $g_\gamma(x)$.
+        \item \textbf{Hachage :} Insertion en mémoire pour identifier les doublons $g_\gamma(x) = g_\gamma(x')$.
+        \item \textbf{Déduction :} Pour chaque collision, calcul de la différence $\alpha = x \oplus x'$.
+        \item \textbf{Comptage :} Incrémentation du score du candidat $\alpha$.
     \end{enumerate}
 
 \end{frame}
