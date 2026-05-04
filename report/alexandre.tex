@@ -119,8 +119,8 @@
 % --- DIAPO 6 : LA CONTRAINTE SPATIALE ---
 \begin{frame}{Le goulot d'étranglement spatial}
 
-    \begin{block}{Le coût de la table de hachage}
-        L'algorithme requiert le stockage simultané de $M$ entrées pour identifier les collisions.
+    \begin{block}{Le coût matériel de la détection}
+        L'algorithme requiert le stockage de $M$ entrées pour identifier les collisions.
     \end{block}
 
     \vspace{0.4cm}
@@ -128,9 +128,9 @@
     \vspace{0.2cm}
 
     \begin{itemize}
-        \item \textbf{Taille de l'échantillon :} $M \approx 2^{n/2} \cdot p^{-1} = 2^{16} \cdot 2^{16} = 2^{32}$ éléments.
-        \item \textbf{Empreinte unitaire :} Message $x$ (32 bits) + Signature (32 bits) = 64 bits (8 octets).
-        \item \textbf{Consommation RAM :} $2^{32} \text{ entrées} \times 8 \text{ octets} = \mathbf{32 \text{ Go}}$.
+        \item \textbf{Taille de l'échantillon :} $2^{n/2} \cdot p^{-1} = 2^{32}$ messages de 32 bits = \textbf{16 Go}.
+        \item \textbf{Signatures uniques (Loi $1 - 1/e$) :} $\approx 63,2\,\%$ de l'espace couvert, soit $0,632 \times 2^{32}$ signatures de 32 bits = \textbf{10,8 Go}.
+        \item \textbf{Charge utile minimale brute :} $16 \text{ Go} + 10,8 \text{ Go} = \mathbf{26,8 \text{ Go}}$.
     \end{itemize}
 
 \end{frame}
