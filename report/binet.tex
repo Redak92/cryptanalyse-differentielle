@@ -1,14 +1,184 @@
 % =========================================================
 % PARTIE 1 : BINET DUPRÉ
 % =========================================================
-\section{Titre de la section 1}
+\section{Cryptanalyse différentielle : des fondements à la détection statistique}
 
-\begin{frame}{Titre de la section 1}
-    \begin{block}{Exemple de bloc}
-        Police Open Sans
+\begin{frame}{Introduction à la cryptanalyse différentielle} % 
+    Depuis son introduction à la fin des années 1980, la cryptanalyse différentielle a redéfini la manière dont nous concevons et évaluons la sécurité des chiffrements par bloc.
+
+    \includegraphics[]{}
+\end{frame}
+
+\begin{frame}[t]{Introduction à la cryptanalyse différentielle} % =============================================
+    \small
+    \begin{block}{Différence entre deux messages chiffrés}
+        Soit $x$ et $x'$ deux messages clairs $\in \{0,1\}^n$, on définie la différence avant chiffrement $\alpha$ tel que tel que : 
+        \begin{equation*}
+            \alpha =  x \oplus  x'
+        \end{equation*}
+        Soit $F$ une primitive cryptographique, on définit la différence après chiffrement $\beta$ tel que :
+        \begin{equation*}
+            F(x) \oplus F(x \oplus \alpha) = \beta
+        \end{equation*}
+    \end{block} 
+    Si $\beta$ apparaît avec une probabilité $p$ anormalement élevée pour un $\alpha$ donné, la différentielle $\alpha \rightarrow \beta$ est exploitable.
+\end{frame}
+
+\begin{frame}{Introduction à la cryptanalyse différentielle} % =============================================
+    \small
+    \begin{block}{Différence entre deux messages chiffrés}
+        Soit $x$ et $x'$ deux messages clairs $\in \{0,1\}^n$, on définie la différence $\alpha$ tel que tel que : 
+        \begin{equation*}
+            \alpha =  x \oplus  x'
+        \end{equation*}
+        Soit $F$ une primitive cryptographique, on définit la différence $\beta$ tel que :
+        \begin{equation*}
+            F(x) \oplus F(x \oplus \alpha) = \beta
+        \end{equation*}
+    \end{block} 
+    Si $\beta$ apparaît avec une probabilité $p$ anormalement élevée pour un $\alpha$ donné, la différentielle $\alpha \rightarrow \beta$ est exploitable.
+    
+    \begin{block}{Les différentielle apparaissent en paires : \\ }
+    Pour la paire de messages $(x \oplus \alpha, (x \oplus \alpha) \oplus \alpha)$ :
+        \begin{equation*}
+            F(x \oplus \alpha) \oplus F((x \oplus \alpha) \oplus \alpha) = F(x \oplus \alpha) \oplus F(x \oplus \alpha \oplus \alpha) = F(x \oplus \alpha) \oplus F(x) = \beta
+        \end{equation*}    
     \end{block}
+    Meilleur seuil de probabilité d'apparition de différentielle atteignable : $2^{-n-1}$
+\end{frame}
+
+\subsection{Algorithme de Recherche Exhaustive}
+
+\begin{frame}[t]{Algorithme de Recherche Exhaustive } % =============================================
+    \begin{block}{Principe}
+        Pour chaque $\alpha \in \{0,1\}^n \setminus \{0\}$ :
+        \begin{enumerate}
+            \item Parcourir tous les $x \in \{0,1\}^n$
+            \item Calculer $\beta = F(x) \oplus F(x \oplus \alpha)$
+            \item Incrémenter le compteur pour $(\alpha, \beta)$
+        \end{enumerate}
+    \end{block}
+
+    Cet algorithme se résume à parcourir la Table de Distribution des Différentielles (DDT) de la foction de chiffrement 
+\end{frame}
+
+\begin{frame}[t]{Algorithme de Recherche Exhaustive } % =============================================
+    \begin{block}{Principe}
+        Pour chaque $\alpha \in \{0,1\}^n \setminus \{0\}$ :
+        \begin{enumerate}
+            \item Parcourir tous les $x \in \{0,1\}^n$
+            \item Calculer $\beta = F(x) \oplus F(x \oplus \alpha)$
+            \item Incrémenter le compteur pour $(\alpha, \beta)$
+        \end{enumerate}
+    \end{block}
+
+    Cet algorithme se résume à parcourir la Table de Distribution des Différentielles (DDT) de la foction de chiffrement :
+    \footnotesize\[
+    \underbrace {
+    \bordermatrix{
+        & x_0 & x_1 & \cdots & x_{n-1} \cr
+        \alpha_0    & F(x_0) \oplus F(x_0 \oplus \alpha_0) & F(x_1) \oplus F(x_1 \oplus \alpha_0) & \cdots & F(x_{n-1}) \oplus F(x_{n-1} \oplus \alpha_0) \cr
+        \alpha_1    & F(x_0) \oplus F(x_0 \oplus \alpha_1) & F(x_1) \oplus F(x_1 \oplus \alpha_1) & \cdots & F(x_{n-1}) \oplus F(x_{n-1} \oplus \alpha_1) \cr
+        \vdots      & \vdots & \vdots & \ddots & \vdots \cr
+        \alpha_{n-1} & F(x_0) \oplus F(x_0 \oplus \alpha_{n-1}) & F(x_1) \oplus F(x_1 \oplus \alpha_{n-1}) & \cdots & F(x_{n-1}) \oplus F(x_{n-1} \oplus \alpha_{n-1}) \cr
+    }}_{\text{\small Espace de taille $2^n \cdot 2^n $} }
+    \]
     \begin{itemize}
-        \item Point 1.
-        \item Point 2.
+        \item \textbf{Complexité en temps et en mémoire :} $\mathcal{O}(2^{2n})$
     \end{itemize}
+\end{frame}
+
+\begin{frame}[t]{Algorithme de Recherche Exhaustive } % =============================================
+    \begin{alertblock}{}
+        \textbf{Problème :} Inutilisable en temps raisonnable pour nos ordinateurs pour $n > 20$ 
+    \end{alertblock}
+    
+    \textbf{Trois optimisations majeures :}
+    \begin{enumerate}
+        \item \textbf{Pré-calcul des chiffrés :} Stocker $F(x)$ dans une table $T$, puis $\beta = T[x] \oplus T[x \oplus \alpha]$ (deux accès mémoire au lieu de deux chiffrements)
+        \item \textbf{Filtrage à la volée (pDDT) :} Ne sauvegarder que les différentielles dépassant un seuil de probabilité $p$, évitant le stockage en $\mathcal{O}(2^{2n-1})$
+        \item \textbf{Parallélisation :} Distribution du parcours des $\alpha$ sur les différents cœurs du processeur
+    \end{enumerate}
+\end{frame}
+
+\begin{frame}[t]{Algorithme de Recherche Exhaustive } % =============================================
+    \begin{alertblock}{}
+        \textbf{Problème :} Inutilisable en temps raisonnable pour nos ordinateurs pour $n > 20$ 
+    \end{alertblock}
+    
+    \textbf{Trois optimisations majeures :}
+    \begin{enumerate}
+        \item \textbf{Pré-calcul des chiffrés :} Stocker $F(x)$ dans une table $T$, puis $\beta = T[x] \oplus T[x \oplus \alpha]$ (deux accès mémoire au lieu de deux chiffrements)
+        \item \textbf{Filtrage à la volée (pDDT) :} Ne sauvegarder que les différentielles dépassant un seuil de probabilité $p$, évitant le stockage en $\mathcal{O}(2^{2n-1})$
+        \item \textbf{Parallélisation :} Distribution du parcours des $\alpha$ sur les différents cœurs du processeur
+    \end{enumerate}
+    \begin{block}{Le « mur de la RAM » sur Speck 32/64 ($n=32$) :}
+        Parcourir tout l'espace des messages pour chaque différence $\alpha$ reste trop couteux. \\
+         $\Rightarrow$ La table de pré-calcul nécessite théoriquement $\mathbf{34{,}36}$ Go de RAM.
+    \end{block}
+    
+\end{frame}
+
+\subsection{Algorithme Standard}
+
+\begin{frame}{L'Algorithme Standard — Principe}  % =============================================
+    Transformation de la recherche déterministe en \textbf{échantillonnage statistique} : pour chaque $\alpha$, on teste $k$ paires aléatoires au lieu de $2^n$.
+
+    \begin{block}{Principe}
+        Pour chaque $\alpha \in \{0,1\}^n \setminus \{0\}$:
+        \begin{enumerate}
+            \item Choisir $k = 4/p$ valeurs aléatoires de $x \in \{0,1\}^n$
+            \item Calculer $\beta = F(x) \oplus F(x \oplus \alpha)$ pour chaque $x$
+            \item Signaler tout $\beta$ apparaissant au moins 2 fois
+        \end{enumerate}
+    \end{block}
+
+    \begin{itemize}
+        \item \textbf{Complexité en temps et en mémoire :} $\mathcal{O}(2^{n} \cdot p^{-1})$
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[t]{L'Algorithme Standard — Détection}  % =============================================
+    
+    \begin{block}{Modélisation de la détection}
+        Chaque paire testée a une probabilité $p$ de produire le bon $\beta$ : c'est une épreuve de Bernoulli. Comme $p$ est très petit et $k$ grand, le nombre de succès $X$ suit une loi de Poisson $\mathcal{P}(\lambda)$ avec $\lambda = k \times p$.
+    \end{block}
+
+    \begin{block}{Choix de $k = 4/p$ ($\lambda = 4$)}
+    $\lambda$ trop petit $\Rightarrow$ détection peu fiable. \\
+    $\lambda$ trop grand $\Rightarrow$ nombre de paires testées l'est aussi. \\
+    Le choix $\lambda = 4$ offre un bon compromis :
+    \begin{equation*}
+        P(X \ge 2) = 1 - e^{-\lambda}(1+\lambda) \approx 0{,}9085
+    \end{equation*}
+        Chaque vraie différentielle est détectée avec $\sim 90\,\%$ de confiance.
+    \end{block}
+    On signale une différentielle dès qu'elle apparaît au moins 2 fois.
+    
+\end{frame}
+
+\begin{frame}[t]{L'Algorithme Standard — Rejet du bruit}  % =============================================
+    \textbf{Phase de filtrage :} Le critère $count \ge 2$ sépare le signal du bruit.
+
+    \begin{block}{Bruit (permutation aléatoire, $p_{rand} = \frac{1}{2^n - 1}$)}
+        Pour Speck 64 ($n=64$, $p=2^{-13}$) : $\lambda_{rand} \approx 2^{-49}$ \\[0.5em]
+        Par développement de Taylor : $P(X \ge 2) \approx \frac{\lambda^2}{2} \approx 2^{-99}$ \\[0.5em]
+        $\Rightarrow$ Collision très improbable pour $count \ge 2$
+    \end{block}
+\end{frame}
+
+\begin{frame}[t]{L'Algorithme Standard — Rejet du bruit}  % =============================================
+    \textbf{Phase de filtrage :} Le critère $count \ge 2$ sépare le signal du bruit.
+
+    \begin{block}{Bruit (permutation aléatoire, $p_{rand} = \frac{1}{2^n - 1}$)}
+        Pour Speck 64 ($n=64$, $p=2^{-13}$) : $\lambda_{rand} \approx 2^{-49}$ \\[0.5em]
+        Par développement de Taylor : $P(X \ge 2) \approx \frac{\lambda^2}{2} \approx 2^{-99}$ \\[0.5em]
+        $\Rightarrow$ Collision très improbable pour $count \ge 2$
+    \end{block}
+
+    \begin{block}{Limites de l'algorithme}
+        Reste limité par le facteur $2^n$ $\Rightarrow$ $2^{64}$ itérations pour Pour Speck 64/128\\ \phantom{}
+
+        \textbf{Solution :} exploiter le \textbf{paradoxe des anniversaires} pour convertir la recherche en une recherche de \textbf{collisions} $\Rightarrow$ complexité en $2^{n/2} \cdot p^{-1}$
+    \end{block}
 \end{frame}
