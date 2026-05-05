@@ -1,42 +1,23 @@
 % =========================================================
 % PARTIE 1 : BINET DUPRÉ
 % =========================================================
-\section{Cryptanalyse différentielle : des fondements à la détection statistique}
+\section{ Cryptanalyse différentielle : des fondements à la détection statistique}
 
 \begin{frame}{Introduction à la cryptanalyse différentielle} % 
-    Depuis son introduction à la fin des années 1980, la cryptanalyse différentielle a redéfini la manière dont nous concevons et évaluons la sécurité des chiffrements par bloc.
-
-    \includegraphics[]{}
-\end{frame}
-
-\begin{frame}[t]{Introduction à la cryptanalyse différentielle} % =============================================
-    \small
-    \begin{block}{Différence entre deux messages chiffrés}
-        Soit $x$ et $x'$ deux messages clairs $\in \{0,1\}^n$, on définie la différence avant chiffrement $\alpha$ tel que tel que : 
-        \begin{equation*}
-            \alpha =  x \oplus  x'
-        \end{equation*}
-        Soit $F$ une primitive cryptographique, on définit la différence après chiffrement $\beta$ tel que :
-        \begin{equation*}
-            F(x) \oplus F(x \oplus \alpha) = \beta
-        \end{equation*}
-    \end{block} 
-    Si $\beta$ apparaît avec une probabilité $p$ anormalement élevée pour un $\alpha$ donné, la différentielle $\alpha \rightarrow \beta$ est exploitable.
+    \includegraphics[width=12cm]{figures/eprint_screencap.png}
 \end{frame}
 
 \begin{frame}{Introduction à la cryptanalyse différentielle} % =============================================
     \small
     \begin{block}{Différence entre deux messages chiffrés}
-        Soit $x$ et $x'$ deux messages clairs $\in \{0,1\}^n$, on définie la différence $\alpha$ tel que tel que : 
-        \begin{equation*}
-            \alpha =  x \oplus  x'
-        \end{equation*}
-        Soit $F$ une primitive cryptographique, on définit la différence $\beta$ tel que :
+        Soit $x$ un message clair $\in \{0,1\}^n$, pour une différence d'entrée  $\alpha$ et une différence de sortie $\beta$ on s'intéresse au solutions de l'équation suivante : 
         \begin{equation*}
             F(x) \oplus F(x \oplus \alpha) = \beta
         \end{equation*}
+        Si $\beta$ apparaît avec une probabilité $p$ anormalement élevée pour un $\alpha$ donné, la différentielle $\alpha \rightarrow \beta$ est exploitable.    
     \end{block} 
-    Si $\beta$ apparaît avec une probabilité $p$ anormalement élevée pour un $\alpha$ donné, la différentielle $\alpha \rightarrow \beta$ est exploitable.
+
+    Meilleur seuil de probabilité d'apparition de différentielle atteignable : $\frac{1}{2^{n + 1}}$
     
     \begin{block}{Les différentielle apparaissent en paires : \\ }
     Pour la paire de messages $(x \oplus \alpha, (x \oplus \alpha) \oplus \alpha)$ :
@@ -44,10 +25,10 @@
             F(x \oplus \alpha) \oplus F((x \oplus \alpha) \oplus \alpha) = F(x \oplus \alpha) \oplus F(x \oplus \alpha \oplus \alpha) = F(x \oplus \alpha) \oplus F(x) = \beta
         \end{equation*}    
     \end{block}
-    Meilleur seuil de probabilité d'apparition de différentielle atteignable : $2^{-n-1}$
+    
 \end{frame}
 
-\subsection{Algorithme de Recherche Exhaustive}
+\subsection{Algorithme Naïf}
 
 \begin{frame}[t]{Algorithme de Recherche Exhaustive } % =============================================
     \begin{block}{Principe}
@@ -59,20 +40,6 @@
         \end{enumerate}
     \end{block}
 
-    Cet algorithme se résume à parcourir la Table de Distribution des Différentielles (DDT) de la foction de chiffrement 
-\end{frame}
-
-\begin{frame}[t]{Algorithme de Recherche Exhaustive } % =============================================
-    \begin{block}{Principe}
-        Pour chaque $\alpha \in \{0,1\}^n \setminus \{0\}$ :
-        \begin{enumerate}
-            \item Parcourir tous les $x \in \{0,1\}^n$
-            \item Calculer $\beta = F(x) \oplus F(x \oplus \alpha)$
-            \item Incrémenter le compteur pour $(\alpha, \beta)$
-        \end{enumerate}
-    \end{block}
-
-    Cet algorithme se résume à parcourir la Table de Distribution des Différentielles (DDT) de la foction de chiffrement :
     \footnotesize\[
     \underbrace {
     \bordermatrix{
@@ -88,37 +55,6 @@
     \end{itemize}
 \end{frame}
 
-\begin{frame}[t]{Algorithme de Recherche Exhaustive } % =============================================
-    \begin{alertblock}{}
-        \textbf{Problème :} Inutilisable en temps raisonnable pour nos ordinateurs pour $n > 20$ 
-    \end{alertblock}
-    
-    \textbf{Trois optimisations majeures :}
-    \begin{enumerate}
-        \item \textbf{Pré-calcul des chiffrés :} Stocker $F(x)$ dans une table $T$, puis $\beta = T[x] \oplus T[x \oplus \alpha]$ (deux accès mémoire au lieu de deux chiffrements)
-        \item \textbf{Filtrage à la volée (pDDT) :} Ne sauvegarder que les différentielles dépassant un seuil de probabilité $p$, évitant le stockage en $\mathcal{O}(2^{2n-1})$
-        \item \textbf{Parallélisation :} Distribution du parcours des $\alpha$ sur les différents cœurs du processeur
-    \end{enumerate}
-\end{frame}
-
-\begin{frame}[t]{Algorithme de Recherche Exhaustive } % =============================================
-    \begin{alertblock}{}
-        \textbf{Problème :} Inutilisable en temps raisonnable pour nos ordinateurs pour $n > 20$ 
-    \end{alertblock}
-    
-    \textbf{Trois optimisations majeures :}
-    \begin{enumerate}
-        \item \textbf{Pré-calcul des chiffrés :} Stocker $F(x)$ dans une table $T$, puis $\beta = T[x] \oplus T[x \oplus \alpha]$ (deux accès mémoire au lieu de deux chiffrements)
-        \item \textbf{Filtrage à la volée (pDDT) :} Ne sauvegarder que les différentielles dépassant un seuil de probabilité $p$, évitant le stockage en $\mathcal{O}(2^{2n-1})$
-        \item \textbf{Parallélisation :} Distribution du parcours des $\alpha$ sur les différents cœurs du processeur
-    \end{enumerate}
-    \begin{block}{Le « mur de la RAM » sur Speck 32/64 ($n=32$) :}
-        Parcourir tout l'espace des messages pour chaque différence $\alpha$ reste trop couteux. \\
-         $\Rightarrow$ La table de pré-calcul nécessite théoriquement $\mathbf{34{,}36}$ Go de RAM.
-    \end{block}
-    
-\end{frame}
-
 \subsection{Algorithme Standard}
 
 \begin{frame}{L'Algorithme Standard — Principe}  % =============================================
@@ -127,7 +63,7 @@
     \begin{block}{Principe}
         Pour chaque $\alpha \in \{0,1\}^n \setminus \{0\}$:
         \begin{enumerate}
-            \item Choisir $k = 4/p$ valeurs aléatoires de $x \in \{0,1\}^n$
+            \item Choisir $k$ valeurs aléatoires de $x \in \{0,1\}^n$
             \item Calculer $\beta = F(x) \oplus F(x \oplus \alpha)$ pour chaque $x$
             \item Signaler tout $\beta$ apparaissant au moins 2 fois
         \end{enumerate}
@@ -157,28 +93,15 @@
     
 \end{frame}
 
-\begin{frame}[t]{L'Algorithme Standard — Rejet du bruit}  % =============================================
-    \textbf{Phase de filtrage :} Le critère $count \ge 2$ sépare le signal du bruit.
+\begin{frame}{L'Algorithme Standard — Rejet du bruit}  % =============================================
 
-    \begin{block}{Bruit (permutation aléatoire, $p_{rand} = \frac{1}{2^n - 1}$)}
-        Pour Speck 64 ($n=64$, $p=2^{-13}$) : $\lambda_{rand} \approx 2^{-49}$ \\[0.5em]
-        Par développement de Taylor : $P(X \ge 2) \approx \frac{\lambda^2}{2} \approx 2^{-99}$ \\[0.5em]
-        $\Rightarrow$ Collision très improbable pour $count \ge 2$
-    \end{block}
-\end{frame}
-
-\begin{frame}[t]{L'Algorithme Standard — Rejet du bruit}  % =============================================
-    \textbf{Phase de filtrage :} Le critère $count \ge 2$ sépare le signal du bruit.
-
-    \begin{block}{Bruit (permutation aléatoire, $p_{rand} = \frac{1}{2^n - 1}$)}
+    \begin{block}{Bruit (permutation aléatoire, $p_{rand} = \frac{1}{2^{n + 1}}$)}
         Pour Speck 64 ($n=64$, $p=2^{-13}$) : $\lambda_{rand} \approx 2^{-49}$ \\[0.5em]
         Par développement de Taylor : $P(X \ge 2) \approx \frac{\lambda^2}{2} \approx 2^{-99}$ \\[0.5em]
         $\Rightarrow$ Collision très improbable pour $count \ge 2$
     \end{block}
 
-    \begin{block}{Limites de l'algorithme}
-        Reste limité par le facteur $2^n$ $\Rightarrow$ $2^{64}$ itérations pour Pour Speck 64/128\\ \phantom{}
-
-        \textbf{Solution :} exploiter le \textbf{paradoxe des anniversaires} pour convertir la recherche en une recherche de \textbf{collisions} $\Rightarrow$ complexité en $2^{n/2} \cdot p^{-1}$
-    \end{block}
+    \begin{alertblock}{Limites de l'algorithme}
+        Reste limité par le facteur $2^n$ $\Rightarrow$ $2^{64}$ itérations pour Speck 64/128\\ \phantom{}
+    \end{alertblock}
 \end{frame}
