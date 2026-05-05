@@ -1,33 +1,6 @@
 % =========================================================
 % PARTIE 1 : BINET DUPRÉ
 % =========================================================
-\section{ Cryptanalyse différentielle : des fondements à la détection statistique}
-
-\begin{frame}{Introduction à la cryptanalyse différentielle} % 
-    \includegraphics[width=12cm]{figures/eprint_screencap.png}
-\end{frame}
-
-\begin{frame}{Introduction à la cryptanalyse différentielle} % =============================================
-    \small
-    \begin{block}{Différence entre deux messages chiffrés}
-        Soit $x$ un message clair $\in \{0,1\}^n$, pour une différence d'entrée  $\alpha$ et une différence de sortie $\beta$ on s'intéresse au solutions de l'équation suivante : 
-        \begin{equation*}
-            F(x) \oplus F(x \oplus \alpha) = \beta
-        \end{equation*}
-        Si $\beta$ apparaît avec une probabilité $p$ anormalement élevée pour un $\alpha$ donné, la différentielle $\alpha \rightarrow \beta$ est exploitable.    
-    \end{block} 
-
-    Meilleur seuil de probabilité d'apparition de différentielle atteignable : $\frac{2}{2^{n}}$
-    
-    \begin{block}{Les différentielle apparaissent en paires : \\ }
-    Pour la paire de messages $(x \oplus \alpha, (x \oplus \alpha) \oplus \alpha)$ :
-        \begin{equation*}
-            F(x \oplus \alpha) \oplus F((x \oplus \alpha) \oplus \alpha) = F(x \oplus \alpha) \oplus F(x \oplus \alpha \oplus \alpha) = F(x \oplus \alpha) \oplus F(x) = \beta
-        \end{equation*}    
-    \end{block}
-    
-\end{frame}
-
 \begin{frame}{Introduction à la cryptanalyse différentielle}
 
     \begin{block}{L'équation différentielle}
@@ -51,8 +24,6 @@
     \end{alertblock}
     
 \end{frame}
-
-\subsection{Algorithme Naïf}
 
 \begin{frame}[t]{Algorithme de Recherche Exhaustive } % =============================================
     \begin{block}{Principe}
@@ -79,8 +50,6 @@
     \end{itemize}
 \end{frame}
 
-\subsection{Algorithme Standard}
-
 \begin{frame}{L'Algorithme Standard — Principe}  % =============================================
     Transformation de la recherche déterministe en \textbf{échantillonnage statistique} : pour chaque $\alpha$, on teste $k$ paires aléatoires au lieu de $2^n$.
 
@@ -96,25 +65,6 @@
     \begin{itemize}
         \item \textbf{Complexité en temps et en mémoire :} $\mathcal{O}(2^{n} \cdot p^{-1})$
     \end{itemize}
-\end{frame}
-
-\begin{frame}[t]{L'Algorithme Standard — Détection}  % =============================================
-    
-    \begin{block}{Modélisation de la détection}
-        Chaque paire testée a une probabilité $p$ de produire le bon $\beta$ : c'est une épreuve de Bernoulli. Comme $p$ est très petit et $k$ grand, le nombre de succès $X$ suit une loi de Poisson $\mathcal{P}(\lambda)$ avec $\lambda = k \times p$.
-    \end{block}
-
-    \begin{block}{Choix de $k = 4/p$ ($\lambda = 4$)}
-    $\lambda$ trop petit $\Rightarrow$ détection peu fiable. \\
-    $\lambda$ trop grand $\Rightarrow$ nombre de paires testées l'est aussi. \\
-    Le choix $\lambda = 4$ offre un bon compromis :
-    \begin{equation*}
-        P(X \ge 2) = 1 - e^{-\lambda}(1+\lambda) \approx 0{,}9085
-    \end{equation*}
-        Chaque vraie différentielle est détectée avec $\sim 90\,\%$ de confiance.
-    \end{block}
-    On signale une différentielle dès qu'elle apparaît au moins 2 fois.
-    
 \end{frame}
 
 \begin{frame}{L'Algorithme Standard — Détection}  
@@ -141,15 +91,22 @@
     
 \end{frame}
 
-\begin{frame}{L'Algorithme Standard — Rejet du bruit}  % =============================================
+\begin{frame}{L'Algorithme Standard — Rejet du bruit}
 
-    \begin{block}{Bruit (permutation aléatoire, $p_{rand} = \frac{1}{2^{n} - 1}$)}
-        Pour Speck 64 ($n=64$, $p=2^{-13}$) : $\lambda_{rand} \approx 2^{-49}$ \\[0.5em]
-        Par développement de Taylor : $P(X \ge 2) \approx \frac{\lambda^2}{2} \approx 2^{-99}$ \\[0.5em]
-        $\Rightarrow$ Collision très improbable pour $count \ge 2$
+    \begin{block}{Modélisation du bruit (exemple : Speck 64, $p = 2^{-13}$)}
+        Probabilité d'une coïncidence par hasard : $p_{\text{rand}} \approx 2^{-64}$
+
+        Espérance sur $k = 4/p = 2^{15}$ paires :
+        $\lambda_{\text{rand}} = k \cdot p_{\text{rand}} = 2^{-49}$
+
+        Probabilité d'observer $\ge 2$ collisions (Poisson) :
+        $P(X \ge 2) \approx \frac{\lambda^2}{2} \approx 2^{-99}$
     \end{block}
 
+    $\Rightarrow$ Un faux positif est \textbf{quasi impossible} : le seuil $count \ge 2$ suffit
+    à rejeter le bruit.
+
     \begin{alertblock}{Limites de l'algorithme}
-        Reste limité par le facteur $2^n$ $\Rightarrow$ $2^{64}$ itérations pour Speck 64/128\\ \phantom{}
+        Reste limité par le facteur $2^n$ $\Rightarrow$ $2^{64}$ itérations pour Speck 64/128
     \end{alertblock}
 \end{frame}
