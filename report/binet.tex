@@ -112,3 +112,26 @@
         Reste limité par le facteur $2^n$ $\Rightarrow$ $2^{64}$ itérations pour Speck 64/128
     \end{alertblock}
 \end{frame}
+
+\begin{frame}{L'Algorithme Standard — Rejet du bruit}
+
+    \begin{block}{Filtrage statistique (Exemple : Speck 64, $p = 2^{-13}$)}
+        \begin{itemize}
+            \item \textbf{Bruit de fond :} Probabilité d'une coïncidence aléatoire $p_{\text{rand}} = 2^{-64}$.
+            \item \textbf{Espérance (\boldmath$k = 2^{15}$ paires\unboldmath) :} $\lambda_{\text{rand}} = k \cdot p_{\text{rand}} = 2^{-49}$.
+            \item \textbf{Loi de Poisson :} Probabilité d'observer $\ge 2$ occurrences par hasard :
+            \begin{equation*}
+                P(X \ge 2) \approx \frac{\lambda_{\text{rand}}^2}{2} \approx 2^{-99}
+            \end{equation*}
+        \end{itemize}
+    \end{block}
+
+    \vspace{0.2cm}
+    \textbf{Bilan :} Un faux positif est statistiquement impossible. Le seuil $X \ge 2$ garantit le rejet intégral du bruit.
+
+    \vspace{0.4cm}
+    \begin{alertblock}{Le verrou temporel}
+        La complexité temporelle en $2^n$ ($2^{64}$ itérations pour Speck 64) rend l'attaque matériellement impossible.
+    \end{alertblock}
+    
+\end{frame}
