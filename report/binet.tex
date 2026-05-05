@@ -28,6 +28,30 @@
     
 \end{frame}
 
+\begin{frame}{Introduction à la cryptanalyse différentielle}
+
+    \begin{block}{L'équation différentielle}
+        Pour une différence d'entrée $\alpha$ et de sortie $\beta$ :
+        \begin{equation*}
+            F(x) \oplus F(x \oplus \alpha) = \beta
+        \end{equation*}
+        Une différentielle $\alpha \rightarrow \beta$ est exploitable si sa probabilité d'apparition $p$ est anormalement élevée.
+    \end{block} 
+
+    \vspace{0.2cm}
+    \textbf{Seuil théorique minimal de sécurité :} $p = 2^{1-n}$
+    
+    \vspace{0.2cm}
+    \begin{alertblock}{Propriété de symétrie}
+        L'opération XOR étant commutative, l'évaluation des paires est symétrique :
+        \begin{equation*}
+            (x) \oplus (x \oplus \alpha) \iff (x \oplus \alpha) \oplus (x)
+        \end{equation*} 
+        Conséquence stricte : les solutions apparaissent systématiquement par paires.
+    \end{alertblock}
+    
+\end{frame}
+
 \subsection{Algorithme Naïf}
 
 \begin{frame}[t]{Algorithme de Recherche Exhaustive } % =============================================
@@ -90,6 +114,30 @@
         Chaque vraie différentielle est détectée avec $\sim 90\,\%$ de confiance.
     \end{block}
     On signale une différentielle dès qu'elle apparaît au moins 2 fois.
+    
+\end{frame}
+
+\begin{frame}{L'Algorithme Standard — Détection}  
+    
+    \begin{block}{Modélisation statistique}
+        La recherche sur $k$ paires avec une probabilité de succès $p$ suit une loi de Poisson $\mathcal{P}(\lambda)$ de paramètre $\lambda = k \cdot p$.
+    \end{block}
+
+    \vspace{0.2cm}
+    \textbf{Dimensionnement de l'échantillon ($k = 4/p$)}
+    \begin{itemize}
+        \item \textbf{Compromis :} Équilibrer fiabilité de détection et temps de calcul.
+        \item \textbf{Paramétrage :} Fixer $\lambda = 4$ permet un seuil d'alerte à $X \ge 2$ occurrences.
+    \end{itemize}
+
+    \vspace{0.2cm}
+    \begin{exampleblock}{Taux de confiance}
+        La probabilité de détecter une vraie différentielle devient :
+        \begin{equation*}
+            P(X \ge 2) = 1 - e^{-4}(1+4) \approx 0{,}908
+        \end{equation*}
+        La détection est donc assurée avec 90,8\,\% de certitude.
+    \end{exampleblock}
     
 \end{frame}
 
