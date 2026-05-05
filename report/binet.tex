@@ -17,7 +17,7 @@
         Si $\beta$ apparaît avec une probabilité $p$ anormalement élevée pour un $\alpha$ donné, la différentielle $\alpha \rightarrow \beta$ est exploitable.    
     \end{block} 
 
-    Meilleur seuil de probabilité d'apparition de différentielle atteignable : $\frac{1}{2^{n + 1}}$
+    Meilleur seuil de probabilité d'apparition de différentielle atteignable : $\frac{2}{2^{n}}$
     
     \begin{block}{Les différentielle apparaissent en paires : \\ }
     Pour la paire de messages $(x \oplus \alpha, (x \oplus \alpha) \oplus \alpha)$ :
@@ -95,7 +95,7 @@
 
 \begin{frame}{L'Algorithme Standard — Rejet du bruit}  % =============================================
 
-    \begin{block}{Bruit (permutation aléatoire, $p_{rand} = \frac{1}{2^{n + 1}}$)}
+    \begin{block}{Bruit (permutation aléatoire, $p_{rand} = \frac{1}{2^{n} - 1}$)}
         Pour Speck 64 ($n=64$, $p=2^{-13}$) : $\lambda_{rand} \approx 2^{-49}$ \\[0.5em]
         Par développement de Taylor : $P(X \ge 2) \approx \frac{\lambda^2}{2} \approx 2^{-99}$ \\[0.5em]
         $\Rightarrow$ Collision très improbable pour $count \ge 2$
