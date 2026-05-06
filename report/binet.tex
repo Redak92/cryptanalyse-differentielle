@@ -52,7 +52,7 @@
     \end{itemize}
 \end{frame}
 
-\begin{frame}{L'Algorithme Standard — Principe}  % =============================================
+\begin{frame}{L'Algorithme Standard - Principe}  % =============================================
     Transformation de la recherche déterministe en \textbf{échantillonnage statistique} : pour chaque $\alpha$, on teste $k$ paires aléatoires au lieu de $2^n$.
 
     \begin{block}{Principe}
@@ -69,31 +69,7 @@
     \end{itemize}
 \end{frame}
 
-\begin{frame}{L'Algorithme Standard — Détection}  
-    
-    \begin{block}{Modélisation statistique}
-        La recherche sur $k$ paires avec une probabilité de succès $p$ suit une loi de Poisson $\mathcal{P}(\lambda)$ de paramètre $\lambda = k \cdot p$.
-    \end{block}
-
-    \vspace{0.2cm}
-    \textbf{Dimensionnement de l'échantillon ($k = 4/p$)}
-    \begin{itemize}
-        \item \textbf{Compromis :} Équilibrer fiabilité de détection et temps de calcul.
-        \item \textbf{Paramétrage :} Fixer $\lambda = 4$ permet un seuil d'alerte à $X \ge 2$ occurrences.
-    \end{itemize}
-
-    \vspace{0.2cm}
-    \begin{exampleblock}{Taux de confiance}
-        La probabilité de détecter une vraie différentielle devient :
-        \begin{equation*}
-            P(X \ge 2) = 1 - e^{-4}(1+4) \approx 0{,}908
-        \end{equation*}
-        La détection est donc assurée avec 90,8\,\% de certitude.
-    \end{exampleblock}
-    
-\end{frame}
-
-\begin{frame}{L'Algorithme Standard — Rejet du bruit}
+\begin{frame}{L'Algorithme Standard - Rejet du bruit}
 
     \begin{block}{Filtrage statistique (Exemple : Speck 64, $p = 2^{-13}$)}
         \begin{itemize}
