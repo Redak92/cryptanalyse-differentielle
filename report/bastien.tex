@@ -1,38 +1,6 @@
+\section{Variantes algorithmiques}
 
-\section{Limites et motivation}
 
-\begin{frame}{Du mur de la scalabilité à l’approche par collisions}
-
-    \begin{block}{Explosion combinatoire (Speck 32/64, 3 tours, $p = 2^{-3}$)}
-        \centering
-        \renewcommand{\arraystretch}{1.2}
-        \small
-        \begin{tabular}{lcc}
-            \toprule
-            \textbf{Algorithme} & \textbf{Complexité} & \textbf{Faisabilité} \\
-            \midrule
-            Naïf exhaustif & $\mathcal{O}(2^{2n})$ & Abandonné \\
-            Naïf optimisé  & $\mathcal{O}(2^n \cdot p^{-1})$ & Limite pratique \\
-            Collisions & $\mathcal{O}(2^{n/2} \cdot p^{-1})$ & Réalisable \\
-            \bottomrule
-        \end{tabular}
-    \end{block}
-
-    \vspace{0.2cm}
-
-    \begin{itemize}\small
-        \item Explosion combinatoire dès $n=32$ : approche exhaustive inutilisable.
-        \item Même optimisée, la recherche reste coûteuse (ordre de $10^4$ s).
-        \item Nécessité de changer de paradigme algorithmique.
-    \end{itemize}
-
-    \vspace{0.2cm}
-
-    \begin{block}{Idée clé}
-        Remplacer la recherche exhaustive de $\alpha$ par la détection de \textbf{collisions sur une fonction dérivée}.
-    \end{block}
-
-\end{frame}
 
 % =========================================================
 % SQUELETTE SLIDE 2
@@ -56,13 +24,6 @@
 
     \vspace{0.2cm}
 
-    \begin{block}{Contraintes expérimentales}
-        \begin{itemize}\small
-            \item Limitation mémoire : segmentation en lots de calcul.
-            \item Limitation temps : compromis temps/mémoire nécessaire.
-            \item Fort coût de calcul dès $p \leq 2^{-9}$.
-        \end{itemize}
-    \end{block}
 
     \vspace{0.2cm}
 
@@ -74,14 +35,11 @@
 % --- DIAPO : DIAGRAMME DES CLÉS (ÉPURÉE) ---
 \begin{frame}{Distribution des probabilités sur les clés (Speck 32/64, 5 tours)}
 
-    \begin{block}{Configuration}
-        \small 1000 clés testées \quad ($p \approx 2^{-9}$)
-    \end{block}
 
     \vspace{0.2cm}
 
     \begin{center}
-        \includegraphics[width=0.8\textwidth,height=0.5\textheight,keepaspectratio]{figures/analyse_globale_speck_5tours.png}
+        \includegraphics[width=1.2\textwidth,height=0.6\textheight,keepaspectratio]{figures/analyse_globale_speck_5tours.png}
     \end{center}
 
 \end{frame}
@@ -149,22 +107,176 @@
 
 \end{frame}
 
-% =========================================================
-% SQUELETTE SLIDE 6
-% =========================================================
-\begin{frame}{Résultats (6 tours Speck)}
-    % TODO tableau 6 tours
+\begin{frame}{Variantes : Memory-less et Worst-case}
+
+
+    \vspace{0.2cm}
+
+    \begin{block}{Variante Memory-less}
+        \small
+        \begin{itemize}
+            \item Réduction drastique de l’usage mémoire
+            \item Basée sur une recherche de collisions sans stockage massif
+            \item Coût : augmentation du temps de calcul
+        \end{itemize}
+    \end{block}
+
+    \vspace{0.2cm}
+
+    \begin{block}{Variante Worst-case}
+        \small
+        \begin{itemize}
+            \item Multiplie les substituts $\gamma$ testés ($S \approx \frac{200n}{p}$)
+            \item Garantit (presque) la détection pour toutes les clés
+            \item Complexité plus élevée : $\tilde{\mathcal{O}}(2^{n/2} p^{-3/2})$
+        \end{itemize}
+    \end{block}
+
+\end{frame}
+\begin{frame}{Réseau de Feistel utilisé}
+
+\begin{center}
+
+\includegraphics[width=0.7\textwidth]{figures/Feistel.png}
+
+
+\vspace{0.3cm}
+
+\textbf{Fonction de ronde :}
+\[
+F(R_i, K_i) = S(R_i \oplus K_i)
+\]
+
+\end{center}
+
 \end{frame}
 
-% =========================================================
-% SQUELETTE SLIDE 7
-% =========================================================
-\begin{frame}{Conclusion / limites}
-    \begin{itemize}
-        \item Synthèse
-        \item Limites mémoire
-        \item Perspectives GPU
-    \end{itemize}
+\begin{frame}{Impact des S-Box sur le chiffrement}
+
+\begin{center}
+
+\textbf{Comparaison de deux S-Box (6 $\rightarrow$ 6)}
+
+\vspace{0.2cm}
+
+\renewcommand{\arraystretch}{1.4} % padding vertical dans les tableaux
+
+\begin{tabular}{lccc}
+\toprule
+\textbf{S-Box} & \textbf{max(DP)} & \textbf{min NL} & \textbf{Avalanche} \\
+\midrule
+Base & $\frac{1024}{4096}$ & 15 & 0.74 \\
+\vspace{0.2cm}
+Optimisée & $\frac{384}{4096}$ & 24 & 0.97 \\
+\bottomrule
+\end{tabular}
+\vspace{0.2cm}\\
+
+\textbf{Résultat dans le Feistel (8 tours)}
+
+
+\begin{tabular}{lcc}
+\toprule
+\textbf{Version} & \textbf{Best DP} & \textbf{Avg Top-5} \\
+\midrule
+Base & $\frac{14}{4096}$ & $\frac{5.2}{4096}$ \\
+\vspace{0.2cm}
+Optimisée & $\frac{16}{4096}$ & $\frac{5.4}{4096}$ \\
+\bottomrule
+\end{tabular}
+
+
+\end{center}
+
 \end{frame}
 
-\end{document}
+\begin{frame}{Optimisation de la S-Box dans le chiffrement}
+
+\begin{center}
+
+\textbf{Recherche directe dans le Feistel (in-cipher)}
+
+\vspace{0.8cm}
+
+\renewcommand{\arraystretch}{1.5} % padding vertical plus marqué
+
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Méthode} & \textbf{Best DP} & \textbf{Avg Top-5} & \textbf{min NL} & \textbf{Avalanche} \\
+\midrule
+Initiale & $\frac{14}{4096}$ & $\frac{5.2}{4096}$ & 15 & 0.667 \\
+\vspace{0.2cm}
+In-cipher & $\frac{6}{4096}$ & $\frac{3.4}{4096}$ & 17 & 0.743 \\
+\bottomrule
+\end{tabular}
+
+\vspace{1.2cm}
+
+\textbf{Optimisation guidée par le chiffrement complet}
+
+\vspace{0.5cm}
+
+\end{center}
+
+\end{frame}
+
+\begin{frame}{Analyse exhaustive des clés}
+
+\begin{center}
+
+\textbf{Objectif :} détecter d’éventuelles clés faibles
+
+\vspace{0.8cm}
+
+\textbf{Expérience :}
+\begin{itemize}
+    \item 4096 clés testées (espace complet)
+    \item Feistel 8 tours, bloc 12 bits
+    \item Analyse différentielle exhaustive
+\end{itemize}
+
+\vspace{0.8cm}
+
+\textbf{Résultat :}
+\begin{itemize}
+    \item Aucune variation entre les clés
+    \item Best DP identique pour toutes les clés
+\end{itemize}
+
+\vspace{0.8cm}
+
+\textcolor{red}{\textbf{Aucune clé faible détectée}}
+
+\end{center}
+
+\end{frame}
+
+\begin{frame}
+
+\begin{center}
+
+\vspace{2cm}
+
+\Huge \textbf{CONCLUSION}
+
+\vspace{1.5cm}
+
+
+\end{center}
+
+\end{frame}
+
+\begin{frame}
+
+\begin{center}
+
+\vspace{2cm}
+
+\Huge \textbf{MERCI}
+
+\vspace{1.5cm}
+
+
+\end{center}
+
+\end{frame}
