@@ -95,26 +95,6 @@
 
 \begin{frame}{L'Algorithme Standard — Rejet du bruit}
 
-    \begin{block}{Modélisation du bruit (exemple : Speck 64, $p = 2^{-13}$)}
-        Probabilité d'une coïncidence par hasard : $p_{\text{rand}} \approx 2^{-64}$
-
-        Espérance sur $k = 4/p = 2^{15}$ paires :
-        $\lambda_{\text{rand}} = k \cdot p_{\text{rand}} = 2^{-49}$
-
-        Probabilité d'observer $\ge 2$ collisions (Poisson) :
-        $P(X \ge 2) \approx \frac{\lambda^2}{2} \approx 2^{-99}$
-    \end{block}
-
-    $\Rightarrow$ Un faux positif est \textbf{quasi impossible} : le seuil $count \ge 2$ suffit
-    à rejeter le bruit.
-
-    \begin{alertblock}{Limites de l'algorithme}
-        Reste limité par le facteur $2^n$ $\Rightarrow$ $2^{64}$ itérations pour Speck 64/128
-    \end{alertblock}
-\end{frame}
-
-\begin{frame}{L'Algorithme Standard — Rejet du bruit}
-
     \begin{block}{Filtrage statistique (Exemple : Speck 64, $p = 2^{-13}$)}
         \begin{itemize}
             \item \textbf{Bruit de fond :} Probabilité d'une coïncidence aléatoire $p_{\text{rand}} = 2^{-64}$.
